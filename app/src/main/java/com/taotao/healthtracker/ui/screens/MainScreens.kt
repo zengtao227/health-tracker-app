@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.Divider
@@ -98,14 +99,34 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.AccountCircle, null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.AccountCircle, null, modifier = Modifier.size(24.dp).clickable { isExpanded = !isExpanded }, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f).clickable { isExpanded = !isExpanded }) {
                         Text("${L10n.get("active_user", appLang)}: ${activeProfile?.name ?: "P1"}", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text("${L10n.get("ht", appLang)}: ${activeProfile?.height ?: 0f}cm | ${L10n.get("born", appLang)}: ${activeProfile?.birthYear}-${activeProfile?.birthMonth}-${activeProfile?.birthDay}", 
                              style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                     }
-                    // Dual Language Switcher (Compact & Logic Corrected)
+                    
+                    // --- User Selector & Add ---
+                    var showUserMenu by remember { mutableStateOf(false) }
+                    IconButton(onClick = { showUserMenu = true }) {
+                        Icon(Icons.Default.ArrowDropDown, null, tint = MaterialTheme.colorScheme.primary)
+                        DropdownMenu(expanded = showUserMenu, onDismissRequest = { showUserMenu = false }) {
+                            profiles.forEach { p ->
+                                DropdownMenuItem(text = { Text(p.name) }, onClick = { viewModel.switchUser(p.id); showUserMenu = false })
+                            }
+                            Divider()
+                            DropdownMenuItem(
+                                text = { Text(if(appLang == "zh") "+ 新用户" else "+ New User", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) },
+                                onClick = { 
+                                    viewModel.createNewUser("P${profiles.size + 1}")
+                                    showUserMenu = false
+                                }
+                            )
+                        }
+                    }
+
+                    // Dual Language Switcher
                     Column(horizontalAlignment = Alignment.End) {
                         TextButton(onClick = { activeProfile?.let { viewModel.saveProfile(it.copy(language = if(appLang == "zh") "en" else "zh")) } }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp), modifier = Modifier.height(24.dp)) {
                             Text(if(appLang == "zh") "English" else "中文", fontSize = 10.sp, fontWeight = FontWeight.Black)
@@ -128,18 +149,46 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                         OutlinedTextField(value = dayInput, onValueChange = { dayInput = it }, label = { Text("DD") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                     }
                     
-                    Button(onClick = {
-                        activeProfile?.let { 
-                            viewModel.saveProfile(it.copy(
-                                name = nameInput, 
-                                height = heightInput.toFloatOrNull() ?: it.height, 
-                                birthYear = yearInput.toIntOrNull() ?: it.birthYear,
-                                birthMonth = monthInput.toIntOrNull() ?: it.birthMonth,
-                                birthDay = dayInput.toIntOrNull() ?: it.birthDay
-                            )) 
+                    Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        var showDeleteConfirm by remember { mutableStateOf(false) }
+                        
+                        Button(onClick = {
+                            activeProfile?.let { 
+                                viewModel.saveProfile(it.copy(
+                                    name = nameInput, 
+                                    height = heightInput.toFloatOrNull() ?: it.height, 
+                                    birthYear = yearInput.toIntOrNull() ?: it.birthYear,
+                                    birthMonth = monthInput.toIntOrNull() ?: it.birthMonth,
+                                    birthDay = dayInput.toIntOrNull() ?: it.birthDay
+                                )) 
+                            }
+                            isExpanded = false
+                        }, modifier = Modifier.weight(1f)) { Text(L10n.get("save", appLang)) }
+
+                        OutlinedButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.weight(0.6f), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                            Icon(Icons.Default.Delete, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(if(appLang == "zh") "删除" else "Del", fontSize = 12.sp)
                         }
-                        isExpanded = false
-                    }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) { Text(L10n.get("save", appLang)) }
+
+                        if (showDeleteConfirm) {
+                            AlertDialog(
+                                onDismissRequest = { showDeleteConfirm = false },
+                                title = { Text(if(appLang == "zh") "确认删除？" else "Confirm Delete") },
+                                text = { Text(if(appLang == "zh") "该用户的所有记录都将被永久抹除。" else "All records for this user will be permanently deleted.") },
+                                confirmButton = {
+                                    TextButton(onClick = { 
+                                        activeProfile?.let { viewModel.deleteProfile(it.id) }
+                                        showDeleteConfirm = false
+                                        isExpanded = false
+                                    }) { Text(if(appLang == "zh") "确定" else "Confirm", color = ColorBpRed) }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showDeleteConfirm = false }) { Text(if(appLang == "zh") "取消" else "Cancel") }
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -150,7 +199,7 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(westernDateStr, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
             if (appLang == "zh") {
-                Text("乙巳年 [蛇年] · ${almanac.lunar}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(almanac.lunar, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             } else {
                 val cal = java.util.Calendar.getInstance()
                 val dow = java.text.SimpleDateFormat("EEEE", java.util.Locale.ENGLISH).format(cal.time)
@@ -199,17 +248,45 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
             Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (insLang == "zh") {
                     // --- MODE: AUTHENTIC ALMANAC (Real or Local) ---
-                    Text("今日黄历 · ${almanac.lunar}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(12.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("宜", color = ColorGreen, fontWeight = FontWeight.Black, fontSize = 22.sp)
-                            Text(almanac.yi, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("今日黄历", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                        Text(almanac.lunar, style = MaterialTheme.typography.bodySmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Top) {
+                        Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Surface(color = ColorGreen, shape = RoundedCornerShape(4.dp)) { 
+                                Text("宜", color = Color.White, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black) 
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            
+                            // 动态中间拆分，实现上下行对称
+                            val yiWords = almanac.yi.split(" ").filter { it.isNotBlank() }
+                            val balancedYi = if (yiWords.size >= 4) {
+                                val mid = (yiWords.size + 1) / 2
+                                yiWords.take(mid).joinToString(" ") + "\n" + yiWords.drop(mid).joinToString(" ")
+                            } else {
+                                almanac.yi
+                            }
+                            
+                            Text(balancedYi, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center, lineHeight = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.fillMaxWidth())
                         }
-                        Box(Modifier.width(1.dp).height(40.dp).background(MaterialTheme.colorScheme.onSurface.copy(0.1f)))
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("忌", color = ColorBpRed, fontWeight = FontWeight.Black, fontSize = 22.sp)
-                            Text(almanac.ji, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Box(Modifier.width(1.dp).height(80.dp).background(MaterialTheme.colorScheme.onSurface.copy(0.1f)).align(Alignment.CenterVertically))
+                        Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Surface(color = ColorBpRed, shape = RoundedCornerShape(4.dp)) { 
+                                Text("忌", color = Color.White, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black) 
+                            }
+                            Spacer(Modifier.height(10.dp))
+
+                            val jiWords = almanac.ji.split(" ").filter { it.isNotBlank() }
+                            val balancedJi = if (jiWords.size >= 4) {
+                                val mid = (jiWords.size + 1) / 2
+                                jiWords.take(mid).joinToString(" ") + "\n" + jiWords.drop(mid).joinToString(" ")
+                            } else {
+                                almanac.ji
+                            }
+
+                            Text(balancedJi, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center, lineHeight = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.fillMaxWidth())
                         }
                     }
                 } else {

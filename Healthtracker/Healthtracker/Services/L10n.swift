@@ -53,7 +53,20 @@ struct L10n {
             
             // Knowledge
             "bp_reference": ["zh": "血压参考标准", "en": "Blood Pressure Reference"],
-            "bmi_reference": ["zh": "BMI参考标准", "en": "BMI Reference"],
+            "medical_ref": ["zh": "医疗参考", "en": "Medical Reference"],
+            
+            // Knowledge Details
+            "who_bp": ["zh": "WHO 血压标准 (2024)", "en": "WHO BP Standards (2024)"],
+            "bp_safe": ["zh": "理想血压", "en": "Optimal"],
+            "bp_norm_ref": ["zh": "正常血压", "en": "Normal"],
+            "bp_warning": ["zh": "正常高值 (预警)", "en": "High Normal (Warning)"],
+            "bp_hazard": ["zh": "高血压 (危险)", "en": "Hypertension (Hazard)"],
+            
+            "bmi_guide": ["zh": "BMI 指南", "en": "BMI Guide"],
+            "bmi_status_under": ["zh": "偏瘦", "en": "Underweight"],
+            "bmi_status_healthy": ["zh": "健康体重", "en": "Healthy Weight"],
+            "bmi_status_over": ["zh": "超重", "en": "Overweight"],
+            "bmi_status_obese": ["zh": "肥胖", "en": "Obese"],
         ]
         
         return translations[key]?[lang] ?? translations[key]?["en"] ?? key

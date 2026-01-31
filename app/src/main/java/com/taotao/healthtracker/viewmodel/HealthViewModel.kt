@@ -34,15 +34,11 @@ class HealthViewModel(private val repository: HealthRepository) : ViewModel() {
 
     // Real Almanac Data Flow (Reactive)
     private val _currentDate = MutableStateFlow(java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()))
-    val currentAlmanac = _currentDate.flatMapLatest { date ->
-        repository.getAlmanac(date).map { dbData ->
-            if (dbData != null) {
-                com.taotao.healthtracker.domain.LunarUtils.AlmanacResult(dbData.lunarDate, dbData.yi, dbData.ji)
-            } else {
-                com.taotao.healthtracker.domain.LunarUtils.getLocalAlmanac(date)
-            }
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.taotao.healthtracker.domain.LunarUtils.getLocalAlmanac(_currentDate.value))
+    val currentAlmanac = _currentDate.map { date ->
+        // 彻底弃用数据库旧缓存，直接使用最新算法
+        val parsedDate = try { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).parse(date) } catch(e: Exception) { null }
+        com.taotao.healthtracker.domain.LunarUtils.getLocalAlmanac(parsedDate ?: java.util.Date())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.taotao.healthtracker.domain.LunarUtils.getLocalAlmanac())
 
     fun switchUser(userId: Int) {
         _currentUserId.value = userId
@@ -62,9 +58,25 @@ class HealthViewModel(private val repository: HealthRepository) : ViewModel() {
 
     fun createNewUser(name: String) {
         viewModelScope.launch {
-            val nextId = (userProfiles.value.maxOfOrNull { it.id } ?: 0) + 1
-            repository.saveProfile(UserProfile(id = nextId, name = name))
-            _currentUserId.value = nextId
+            val profiles = repository.getAllProfiles().first()
+            val nextId = (profiles.maxOfOrNull { it.id } ?: 0) + 1
+            val newUser = UserProfile(id = nextId, name = name)
+            repository.saveProfile(newUser)
+            // 提交后立即强制切换当前 ID，防止 UI 跳回
+            _currentUserId.emit(nextId)
+        }
+    }
+
+    fun deleteProfile(userId: Int) {
+        viewModelScope.launch {
+            repository.deleteProfileWithRecords(userId)
+            // 自动切换到另一个可用用户，或重新创建 P1
+            val remaining = userProfiles.value.filter { it.id != userId }
+            if (remaining.isNotEmpty()) {
+                _currentUserId.value = remaining.first().id
+            } else {
+                createNewUser("P1")
+            }
         }
     }
 

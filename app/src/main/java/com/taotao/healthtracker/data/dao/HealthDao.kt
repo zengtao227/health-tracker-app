@@ -27,6 +27,9 @@ interface HealthDao {
     @Query("DELETE FROM user_profiles WHERE id = :id")
     suspend fun deleteProfile(id: Int)
 
+    @Query("DELETE FROM health_records WHERE userId = :userId")
+    suspend fun deleteRecordsByUser(userId: Int)
+
     // Almanac (Real Huangli) - Reactive Flow
     @Query("SELECT * FROM almanac_data WHERE date = :date LIMIT 1")
     fun getAlmanacByDate(date: String): Flow<AlmanacData?>

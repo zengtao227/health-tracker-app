@@ -31,6 +31,7 @@ struct ContentView: View {
                 onSave: saveRecord,
                 onProfileUpdate: updateProfile,
                 onCreate: createProfile,
+                onDeleteProfile: deleteProfile,
                 onLangToggle: toggleLanguage
             )
             .tabItem {
@@ -107,13 +108,32 @@ struct ContentView: View {
     }
     
     private func createProfile(name: String) {
-        let nextId = (profiles.map { $0.id }.max() ?? 0) + 1
-        let profile = UserProfile(id: nextId, name: name)
-        modelContext.insert(profile)
-        currentUserId = nextId
+        let newProfile = UserProfile(id: (profiles.map { $0.id }.max() ?? 0) + 1, name: name)
+        modelContext.insert(newProfile)
+        currentUserId = newProfile.id
         try? modelContext.save()
     }
     
+    private func deleteProfile(_ profile: UserProfile) {
+        // 1. Delete all health records for this user
+        let id = profile.id
+        try? modelContext.delete(model: HealthRecord.self, where: #Predicate { $0.userId == id })
+        
+        // 2. Delete the profile itself
+        modelContext.delete(profile)
+        
+        // 3. Reset to another user if available
+        if let first = profiles.first(where: { $0.id != id }) {
+            currentUserId = first.id
+        } else {
+            // If no users left, create default P1
+            let p1 = UserProfile(id: 1, name: "P1")
+            modelContext.insert(p1)
+            currentUserId = 1
+        }
+        try? modelContext.save()
+    }
+
     private func toggleLanguage() {
         if let profile = currentProfile {
             profile.language = profile.language == "zh" ? "en" : "zh"

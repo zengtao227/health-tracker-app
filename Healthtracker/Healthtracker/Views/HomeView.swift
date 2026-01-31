@@ -9,6 +9,7 @@ struct HomeView: View {
     let onSave: (Int?, Int?, Int?, Double?) -> Void
     let onProfileUpdate: (UserProfile) -> Void
     let onCreate: (String) -> Void
+    let onDeleteProfile: (UserProfile) -> Void
     let onLangToggle: () -> Void
     
     @State private var sbpText = ""
@@ -16,12 +17,14 @@ struct HomeView: View {
     @State private var hrText = ""
     @State private var weightText = ""
     @State private var showingProfileEdit = false
+    @State private var showingDeleteConfirmation = false
     
     @State private var editName = ""
     @State private var editHeight = ""
     @State private var editBirthday = Date()
     
-    private let almanac = LunarService.getLocalAlmanac()
+    // Almanac
+    
     
     var body: some View {
         NavigationStack {
@@ -66,21 +69,44 @@ struct HomeView: View {
     }
     
     private var dateCard: some View {
-        VStack(spacing: 16) {
-            VStack {
+        let birthDate = profile?.birthday ?? Date()
+        let cal = Calendar.current
+        let m = cal.component(.month, from: birthDate)
+        let d = cal.component(.day, from: birthDate)
+        let almanac = LunarService.getLocalAlmanac(month: m, day: d)
+        
+        return VStack(spacing: 20) {
+            VStack(spacing: 4) {
                 Text(formattedDate)
                     .font(.system(.title2, design: .serif))
                     .fontWeight(.bold)
-                Text(almanac.lunarDate)
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+                
+                if lang == "zh" {
+                    Text(almanac.lunarDate)
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("\(almanac.zodiac) Season")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                }
             }
-            HStack(spacing: 40) {
-                StatusItem(label: lang == "zh" ? "宜" : "Auspicious", value: almanac.yi, color: .green)
-                StatusItem(label: lang == "zh" ? "忌" : "Inauspicious", value: almanac.ji, color: .red)
+            
+            Divider().background(Color.primary.opacity(0.1))
+            
+            HStack(alignment: .top, spacing: 0) {
+                if lang == "zh" {
+                    StatusItem(label: "宜", value: almanac.yi, color: .green)
+                    Divider().frame(height: 40).padding(.horizontal, 10)
+                    StatusItem(label: "忌", value: almanac.ji, color: .red)
+                } else {
+                    StatusItem(label: "STRENGTH", value: almanac.strength, color: .blue)
+                    Divider().frame(height: 40).padding(.horizontal, 10)
+                    StatusItem(label: "BEWARE", value: almanac.beware, color: .orange)
+                }
             }
         }
-        .padding()
+        .padding(24)
         .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 24))
@@ -144,6 +170,18 @@ struct HomeView: View {
                     TextField(lang == "zh" ? "身高 (cm)" : "Height (cm)", text: $editHeight)
                     DatePicker(lang == "zh" ? "出生日期" : "Birthday", selection: $editBirthday, displayedComponents: .date)
                 }
+                
+                Section {
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "trash")
+                            Text(lang == "zh" ? "删除用户" : "Delete User")
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                }
             }
             .navigationTitle(lang == "zh" ? "编辑资料" : "Edit Profile")
             .toolbar {
@@ -154,12 +192,31 @@ struct HomeView: View {
                     Button(lang == "zh" ? "保存" : "Save") { updateProfileAction() }
                 }
             }
+            .confirmationDialog(
+                lang == "zh" ? "确认删除用户？" : "Delete User?",
+                isPresented: $showingDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button(lang == "zh" ? "删除" : "Delete", role: .destructive) {
+                    if let p = profile {
+                        showingProfileEdit = false
+                        onDeleteProfile(p)
+                    }
+                }
+                Button(lang == "zh" ? "取消" : "Cancel", role: .cancel) {}
+            } message: {
+                Text(lang == "zh" ? "此操作无法撤销。所有健康记录将被永久删除。" : "This action cannot be undone. All health records will be permanently deleted.")
+            }
         }
     }
     
     private func saveAction() {
         onSave(Int(sbpText), Int(dbpText), Int(hrText), Double(weightText))
         sbpText = ""; dbpText = ""; hrText = ""; weightText = ""
+        #if os(iOS)
+        let haptic = UIImpactFeedbackGenerator(style: .medium)
+        haptic.impactOccurred()
+        #endif
     }
     
     private func prepareEdit() {
@@ -211,10 +268,40 @@ struct StatusItem: View {
     let value: String
     let color: Color
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.caption).foregroundStyle(color).bold()
-            Text(value).font(.subheadline).bold()
+        VStack(spacing: 8) {
+            Text(label)
+                .font(.caption)
+                .bold()
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(color))
+            
+            WordFlowView(text: value)
         }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct WordFlowView: View {
+    let text: String
+    
+    var body: some View {
+        // 使用 Unicode \u{2060} (Word Joiner) 强制中文字符连在一起不被拆散
+        let processedText = text.components(separatedBy: " ")
+            .filter { !$0.isEmpty }
+            .map { word in
+                // 在单词的每个字符之间插入 Word Joiner
+                word.map { String($0) }.joined(separator: "\u{2060}")
+            }
+            .joined(separator: " ") // 单词之间保留普通空格，允许在这里换行
+        
+        Text(processedText)
+            .font(.subheadline)
+            .bold()
+            .multilineTextAlignment(.center)
+            .lineSpacing(4)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -229,6 +316,10 @@ struct ModernInputField: View {
                 .font(.caption2)
                 .foregroundStyle(color)
             TextField("0", text: $text)
+                .padding(.top, 0)
+                #if os(iOS)
+                .keyboardType(.decimalPad)
+                #endif
                 .textFieldStyle(.roundedBorder)
         }
     }
@@ -243,6 +334,7 @@ struct ModernInputField: View {
         onSave: { _, _, _, _ in },
         onProfileUpdate: { _ in },
         onCreate: { _ in },
+        onDeleteProfile: { _ in },
         onLangToggle: {}
     )
 }

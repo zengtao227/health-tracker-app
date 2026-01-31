@@ -1,0 +1,14 @@
+# AI 协作最高准则
+
+## 1. 强制构建验证 (Build Before Reporting)
+- **核心要求**：任何涉及 `.swift`, `.kt`, `.xml`, `build.gradle` 等代码逻辑的修改，AI 在回复用户“已完成”之前，**必须**在 Terminal 亲自运行构建命令。
+- **Android 验证命令**：`./gradlew assembleDebug`
+- **iOS/Mac 验证命令**：`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project Healthtracker.xcodeproj -scheme Healthtracker build`
+- **判定标准**：只有当终端输出 `BUILD SUCCESSFUL` 或 `** BUILD SUCCEEDED **` 时，方可告知用户任务完成。
+
+## 2. 禁止碎片化修复
+- 修改代码后必须检查相关联的 `import` 是否丢失、变量名是否在全文件作用域内有效。
+- 严禁在未确认编译通过的情况下，猜测性地回复“已修复”。
+
+## 3. 保持环境整洁
+- 除非用户明确要求，禁止在项目根目录留下 `.py`, `.sh` 等临时性的修复脚本。所有逻辑应直接体现在项目源码中。

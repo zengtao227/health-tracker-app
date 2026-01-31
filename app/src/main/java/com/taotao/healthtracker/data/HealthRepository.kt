@@ -25,4 +25,9 @@ class HealthRepository(private val healthDao: HealthDao) {
 
     fun getAlmanac(date: String) = healthDao.getAlmanacByDate(date)
     suspend fun saveAlmanac(almanac: com.taotao.healthtracker.data.entity.AlmanacData) = healthDao.insertAlmanac(almanac)
+
+    suspend fun deleteProfileWithRecords(userId: Int) {
+        healthDao.deleteRecordsByUser(userId)
+        healthDao.deleteProfile(userId)
+    }
 }
