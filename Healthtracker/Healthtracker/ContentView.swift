@@ -30,7 +30,8 @@ struct ContentView: View {
                 lang: lang,
                 onSave: saveRecord,
                 onProfileUpdate: updateProfile,
-                onCreate: createProfile
+                onCreate: createProfile,
+                onLangToggle: toggleLanguage
             )
             .tabItem {
                 Image(systemName: "house.fill")

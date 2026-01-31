@@ -8,8 +8,10 @@ struct KnowledgeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    // Almanac Reference Card
+                    almanacReferenceCard
+                    
                     // Blood Pressure Reference Card
-                    bpReferenceCard
                     
                     // BMI Reference Card
                     bmiReferenceCard
@@ -192,11 +194,34 @@ struct KnowledgeView: View {
         }
         .padding(.vertical, 4)
     }
-}
-
-#Preview {
-    KnowledgeView(
-        lang: "zh",
-        onLangToggle: {}
-    )
+    // MARK: - Almanac Reference
+    private var almanacReferenceCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(lang == "zh" ? "传统黄历算力" : "Local Almanac Engine", systemImage: "calendar.badge.clock")
+                .font(.headline)
+            
+            Text(lang == "zh" ? "本程序集成了基于时间的传统黄历估算算法，能够根据您的地理位置和当前日期计算出当天的农历日期、干支以及宜忌参考。" : "This app integrates a time-based traditional almanac engine that calculates lunar dates and auspicious activities based on your local time.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            
+            Divider()
+            
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(lang == "zh" ? "计算来源" : "Source")
+                        .font(.caption).bold()
+                    Text("Lunar Math 1.0")
+                }
+                Spacer()
+                VStack(alignment: .trailing) {
+                    Text(lang == "zh" ? "实时同步" : "Sync")
+                        .font(.caption).bold()
+                    Text(lang == "zh" ? "无需联网" : "No Cloud Needed")
+                }
+            }
+            .font(.caption)
+        }
+        .padding()
+        .background(RoundedRectangle(cornerRadius: 16).fill(.ultraThinMaterial))
+    }
 }
