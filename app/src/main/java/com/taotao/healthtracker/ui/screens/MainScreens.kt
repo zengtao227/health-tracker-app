@@ -532,18 +532,27 @@ fun HistoryScreen(viewModel: HealthViewModel) {
             title = { Text(if(lang=="zh") "导出数据" else "Export Data") },
             text = { Text(if(lang=="zh") "请选择导出方式：" else "Choose export method:") },
             confirmButton = {
+                // Save to File
                 TextButton(onClick = { 
                     showExportDialog = false
-                    saveLauncher.launch("HealthRecords_${activeProfile?.name}.csv") // Open 'Save As' picker
+                    saveLauncher.launch("HealthRecords_${activeProfile?.name}.csv")
                 }) { Text(if(lang=="zh") "保存为文件" else "Save to File") }
             },
             dismissButton = {
-                TextButton(onClick = { 
-                    showExportDialog = false
-                    val csv = viewModel.getExportCsv()
-                    val i = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, csv); putExtra(Intent.EXTRA_TITLE, "HealthRecords.csv") }
-                    context.startActivity(Intent.createChooser(i, "Share"))
-                }) { Text(if(lang=="zh") "分享文本" else "Share Text") }
+                Row {
+                    // Share Text
+                    TextButton(onClick = { 
+                        showExportDialog = false
+                        val csv = viewModel.getExportCsv()
+                        val i = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, csv); putExtra(Intent.EXTRA_TITLE, "HealthRecords.csv") }
+                        context.startActivity(Intent.createChooser(i, "Share"))
+                    }) { Text(if(lang=="zh") "分享文本" else "Share Text") }
+                    
+                    // Explicit Cancel
+                    TextButton(onClick = { showExportDialog = false }) { 
+                        Text(if(lang=="zh") "取消" else "Cancel", color = MaterialTheme.colorScheme.error) 
+                    }
+                }
             }
         )
     }
