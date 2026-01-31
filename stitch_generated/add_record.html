@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Health Hub - New Measurement</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "media",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] }
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .input-pill {
+            @apply bg-gray-50 dark:bg-slate-800 border-none rounded-2xl p-4 focus:ring-2 focus:ring-primary/20 transition-all;
+        }
+    </style>
+</head>
+
+<body class="bg-[#f0f2f5] dark:bg-[#101922] text-slate-900 dark:text-white">
+    <div class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden pb-32">
+        <!-- Header -->
+        <header
+            class="p-4 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg z-20">
+            <a href="home_dashboard.html"
+                class="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </a>
+            <h2 class="text-xl font-black">Daily Check-in</h2>
+            <div class="size-10"></div>
+        </header>
+
+        <main class="p-6 flex flex-col gap-8 max-w-lg mx-auto w-full">
+            <!-- Risk Level Visualization (Dynamic) -->
+            <section class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm">
+                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Live Risk Indicator</h3>
+                <div class="relative h-2 w-full bg-gray-100 dark:bg-slate-700 rounded-full flex overflow-hidden">
+                    <div class="h-full bg-blue-400 w-1/4"></div>
+                    <div class="h-full bg-green-500 w-1/4"></div>
+                    <div class="h-full bg-orange-400 w-1/4"></div>
+                    <div class="h-full bg-red-500 w-1/4"></div>
+                </div>
+                <!-- Pointer -->
+                <div class="flex justify-center -mt-1">
+                    <span class="material-symbols-outlined text-green-500 fill-1 text-xs">arrow_drop_up</span>
+                </div>
+                <p class="text-center text-xs font-bold text-green-500 mt-1">Normal Range</p>
+            </section>
+
+            <!-- Blood Pressure Section -->
+            <section class="flex flex-col gap-4">
+                <h3 class="font-black text-lg">Vitals</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Systolic</label>
+                        <input type="number" placeholder="120"
+                            class="w-full bg-white dark:bg-slate-800 rounded-2xl p-4 border-none shadow-sm focus:ring-2 focus:ring-primary/20 text-xl font-black">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Diastolic</label>
+                        <input type="number" placeholder="80"
+                            class="w-full bg-white dark:bg-slate-800 rounded-2xl p-4 border-none shadow-sm focus:ring-2 focus:ring-primary/20 text-xl font-black">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Pulse (BPM)</label>
+                        <input type="number" placeholder="72"
+                            class="w-full bg-white dark:bg-slate-800 rounded-2xl p-4 border-none shadow-sm focus:ring-2 focus:ring-primary/20 text-xl font-black">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Weight (kg)</label>
+                        <input type="number" placeholder="75.0"
+                            class="w-full bg-white dark:bg-slate-800 rounded-2xl p-4 border-none shadow-sm focus:ring-2 focus:ring-primary/20 text-xl font-black">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Measurement Help (Protocol) -->
+            <div class="bg-primary/5 p-4 rounded-2xl border border-primary/10">
+                <div class="flex gap-3">
+                    <span class="material-symbols-outlined text-primary">info</span>
+                    <p class="text-[11px] leading-snug font-medium text-slate-600 dark:text-slate-300">
+                        <b>Pro Tip:</b> Take 3 readings with 1-min intervals for the most accurate average. The app will
+                        automatically drop the first reading.
+                    </p>
+                </div>
+            </div>
+
+            <!-- BP Categories Legend -->
+            <section class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm">
+                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">WHO Blood Pressure
+                    Categories (2024)</h3>
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="size-2 rounded-full bg-red-500"></div>
+                            <span class="text-xs font-bold text-red-500">Grade 2/3 (High)</span>
+                        </div>
+                        <span class="text-[10px] font-medium text-gray-400">≥160 or ≥100</span>
+                    </div>
+                    <div class="flex items-center justify-between border-t border-gray-50 dark:border-slate-700 pt-3">
+                        <div class="flex items-center gap-2">
+                            <div class="size-2 rounded-full bg-orange-400"></div>
+                            <span class="text-xs font-bold text-orange-400">Grade 1 (Hypertension)</span>
+                        </div>
+                        <span class="text-[10px] font-medium text-gray-400">140-159 or 90-99</span>
+                    </div>
+                    <div class="flex items-center justify-between border-t border-gray-50 dark:border-slate-700 pt-3">
+                        <div class="flex items-center gap-2">
+                            <div class="size-2 rounded-full bg-green-500"></div>
+                            <span class="text-xs font-bold text-green-500">Normal / High Normal</span>
+                        </div>
+                        <span class="text-[10px] font-medium text-gray-400">120-139 or 80-89</span>
+                    </div>
+                    <div class="flex items-center justify-between border-t border-gray-50 dark:border-slate-700 pt-3">
+                        <div class="flex items-center gap-2">
+                            <div class="size-2 rounded-full bg-blue-400"></div>
+                            <span class="text-xs font-bold text-blue-400">Optimal</span>
+                        </div>
+                        <span class="text-[10px] font-medium text-gray-400">&lt;120 and &lt;80</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Reading Counter -->
+            <div class="flex items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm">
+                <div class="flex flex-col">
+                    <span class="text-xs font-black">Session Progress</span>
+                    <span class="text-[10px] text-gray-400">1 of 3 readings taken</span>
+                </div>
+                <div class="flex gap-1">
+                    <div class="size-2 rounded-full bg-primary"></div>
+                    <div class="size-2 rounded-full bg-gray-200"></div>
+                    <div class="size-2 rounded-full bg-gray-200"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Fixed Action Button -->
+        <div
+            class="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#f0f2f5] dark:from-[#101922] to-transparent">
+            <div class="max-w-lg mx-auto">
+                <button
+                    class="w-full bg-primary hover:bg-blue-600 text-white font-black h-16 rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-center gap-3 active:scale-[0.98] transition-all">
+                    <span>Finish & Save Record</span>
+                    <span class="material-symbols-outlined">arrow_forward</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
