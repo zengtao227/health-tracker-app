@@ -98,8 +98,13 @@ object LunarUtils {
         val mStr = monthNames.getOrNull(lunarM) ?: "${lunarM}月"
         val dStr = dayNames.getOrNull(lunarD) ?: "${lunarD}日"
 
-        val (yi, ji) = YI_JI_DATA[shen] ?: ("诸事不宜" to "诸事不宜")
+        val (yiRaw, jiRaw) = YI_JI_DATA[shen] ?: ("诸事不宜" to "诸事不宜")
         
+        // 关键防碎词：将每个词内部（如"裁衣"）通过不可见字符强行绑定
+        // 词语内部禁止断行，词语之间（空格处）允许断行
+        val yi = yiRaw.split(" ").joinToString(" ") { it.chunked(1).joinToString("\u2060") }
+        val ji = jiRaw.split(" ").joinToString(" ") { it.chunked(1).joinToString("\u2060") }
+
         return AlmanacResult(
             lunar = "${gan}${zhi}${animal}年 · $mStr$dStr [${shen}日]",
             yi = yi,

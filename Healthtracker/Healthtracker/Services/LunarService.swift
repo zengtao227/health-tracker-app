@@ -12,8 +12,9 @@ struct AlmanacResult {
 class LunarService {
     // 建除十二神顺序
     private static let jianChuNames = ["建", "除", "满", "平", "定", "执", "破", "危", "成", "收", "开", "闭"]
+    private static let TZ_CHINA = TimeZone(identifier: "GMT+8")!
     
-    // 高保真宜忌字典 - 严格参考《协纪辨方书》及主流万年历
+    // 全量高保真宜忌字典 - 严格参考《协纪辨方书》
     private static let yiJiFull: [String: (yi: String, ji: String)] = [
         "建": (
             yi: "开市 交易 纳财 出行 下聘 拜师 会亲友 祈福",
@@ -65,7 +66,6 @@ class LunarService {
         )
     ]
     
-    // 西方星座同 Android
     private static let ZODIAC_ENERGIES: [String: (String, String)] = [
         "Aries": ("Boldness", "Impatience"), "Taurus": ("Stability", "Possessiveness"),
         "Gemini": ("Wit", "Indecisiveness"), "Cancer": ("Intuition", "Moody"),
@@ -76,61 +76,121 @@ class LunarService {
     ]
 
     static func getLocalAlmanac(month: Int, day: Int) -> AlmanacResult {
+        // --- 1. 日期锁定逻辑 ---
+        // 取当前时间的公历 年、月、日
         let now = Date()
+        var cal = Calendar.current
+        let y = cal.component(.year, from: now)
+        let m = cal.component(.month, from: now)
+        let d = cal.component(.day, from: now)
+
+        // 以该日北京时间中午 12 点进行推算
+        var components = DateComponents()
+        components.year = y
+        components.month = m
+        components.day = d
+        components.hour = 12
+        components.timeZone = TZ_CHINA
+        let targetDate = Calendar(identifier: .gregorian).date(from: components)!
+
+        // --- 2. 计算建除神 ---
+        // 2024-02-10 12:00 是甲辰年正月初一 (甲辰日, 4)
+        var refComp = DateComponents()
+        refComp.year = 2024
+        refComp.month = 2
+        refComp.day = 10
+        refComp.hour = 12
+        refComp.timeZone = TZ_CHINA
+        let refDate = Calendar(identifier: .gregorian).date(from: refComp)!
         
-        // 1. 农历日期
-        let lunarCalendar = Calendar(identifier: .chinese)
-        let lunarMonth = lunarCalendar.component(.month, from: now)
-        let lunarDay = lunarCalendar.component(.day, from: now)
-        
-        // 2. 日地支推算 (引用 2026 等未来日期的天文校准)
-        let dayBranchIndex = calculateDayBranch(for: now)
-        
-        // 3. 月建校准 (节气校准模型)
-        // 每个月的地支由农历月份决定：正月寅、二月卯...
-        let monthBranchIndex = (lunarMonth + 1) % 12
-        
-        // 4. 十二神算法 (核心公式)
-        let shenIndex = (dayBranchIndex - monthBranchIndex + 12) % 12
+        let diffDays = Int(targetDate.timeIntervalSince(refDate) / 86400)
+        let branchIndex = (4 + diffDays % 12 + 12) % 12
+        let monthBranchIndex = (m + 2) % 12
+        let shenIndex = (branchIndex - monthBranchIndex + 12) % 12
         let shen = jianChuNames[shenIndex]
+
+        // --- 3. 计算真实的农历月日 (2025/2026 精确校准) ---
+        // 2025 年农历初一: 1月29日
+        var lunarStartComp = DateComponents()
+        lunarStartComp.year = 2025
+        lunarStartComp.month = 1
+        lunarStartComp.day = 29
+        lunarStartComp.hour = 12
+        lunarStartComp.timeZone = TZ_CHINA
+        let lunarYearStart = Calendar(identifier: .gregorian).date(from: lunarStartComp)!
         
-        // 5. 获取详细宜忌
-        let data = yiJiFull[shen] ?? (yi: "诸事不宜", ji: "诸事不宜")
+        let daysInLunarYear = Int(targetDate.timeIntervalSince(lunarYearStart) / 86400)
         
-        // 5. 格式化输出 (手动映射以确保绝对地道的中文)
-        let monthNames = ["", "正月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "冬月", "腊月"]
+        let monthNames = ["", "正月", "二月", "三月", "四月", "五月", "六月", "闰六月", "七月", "八月", "九月", "十月", "冬月", "腊月"]
+        let monthDays = [0, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30] 
+        
+        var remainingDays = daysInLunarYear
+        var lunarM = 1
+        var lunarD = 1
+        
+        if daysInLunarYear >= 0 {
+            for i in 1..<monthDays.count {
+                if remainingDays < monthDays[i] {
+                    lunarM = i
+                    lunarD = remainingDays + 1
+                    break
+                }
+                remainingDays -= monthDays[i]
+            }
+        } else {
+            // 2025年前
+            lunarM = 13
+            lunarD = 30 + daysInLunarYear + 1
+        }
+        
         let dayNames = ["", 
             "初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十",
             "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十",
             "廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十"
         ]
         
-        let mName = (lunarMonth >= 1 && lunarMonth <= 12) ? monthNames[lunarMonth] : "\(lunarMonth)月"
-        let dName = (lunarDay >= 1 && lunarDay <= 30) ? dayNames[lunarDay] : "\(lunarDay)日"
-        let lunarString = "\(mName)\(dName)"
+        let mName = (lunarM >= 1 && lunarM < monthNames.count) ? monthNames[lunarM] : "\(lunarM)月"
+        let dName = (lunarD >= 1 && lunarD < dayNames.count) ? dayNames[lunarD] : "\(lunarD)日"
+
+        // --- 4. 干支年推算 ---
+        var zodiacYear = y
+        if (m == 1 && d < 29 && y == 2025) || (y == 2026 && m == 1 && d < 17) {
+            zodiacYear -= 1
+        }
+        let yearOffset = zodiacYear - 2024
+        let ganNames = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
+        let zhiNames = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+        let animalNames = ["鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"]
+        let gan = ganNames[(0 + yearOffset % 10 + 10) % 10]
+        let zhi = zhiNames[(4 + yearOffset % 12 + 12) % 12]
+        let animal = animalNames[(4 + yearOffset % 12 + 12) % 12]
+
+        // --- 5. 获取详细宜忌并注入不碎词字符 ---
+        let rawData = yiJiFull[shen] ?? (yi: "诸事不宜", ji: "诸事不宜")
         
-        // 6. 星座
+        // 词内部使用 Word Joiner \u{2060} 保护，词之间用空格
+        let processPhrases: (String) -> String = { input in
+            input.components(separatedBy: " ")
+                .filter { !$0.isEmpty }
+                .map { word in
+                    word.map { String($0) }.joined(separator: "\u{2060}")
+                }
+                .joined(separator: " ")
+        }
+
         let zodiac = getZodiac(month: month, day: day)
         let energy = ZODIAC_ENERGIES[zodiac] ?? ("Neutral", "Routine")
         
         return AlmanacResult(
-            lunarDate: "农历\(lunarString) [\(shen)日]",
-            yi: data.yi,
-            ji: data.ji,
+            lunarDate: "\(gan)\(zhi)\(animal)年 · \(mName)\(dName) [\(shen)日]",
+            yi: processPhrases(rawData.yi),
+            ji: processPhrases(rawData.ji),
             zodiac: zodiac,
             strength: energy.0,
             beware: energy.1
         )
     }
     
-    private static func calculateDayBranch(for date: Date) -> Int {
-        // 2000-01-01 12:00 是 辰日(4)
-        let referenceDate = Calendar.current.date(from: DateComponents(year: 2000, month: 1, day: 1))!
-        let diff = Calendar.current.dateComponents([.day], from: referenceDate, to: date).day ?? 0
-        let branchIndex = (diff + 4) % 12
-        return branchIndex >= 0 ? branchIndex : (branchIndex + 12)
-    }
-
     private static func getZodiac(month: Int, day: Int) -> String {
         switch month {
         case 1: return day < 20 ? "Capricorn" : "Aquarius"

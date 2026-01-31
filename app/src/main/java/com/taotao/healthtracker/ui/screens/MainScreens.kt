@@ -269,7 +269,15 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                                 almanac.yi
                             }
                             
-                            Text(balancedYi, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center, lineHeight = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.fillMaxWidth())
+                            Text(
+                                text = balancedYi,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)
+                            )
                         }
                         Box(Modifier.width(1.dp).height(80.dp).background(MaterialTheme.colorScheme.onSurface.copy(0.1f)).align(Alignment.CenterVertically))
                         Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -286,7 +294,15 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                                 almanac.ji
                             }
 
-                            Text(balancedJi, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center, lineHeight = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.fillMaxWidth())
+                            Text(
+                                text = balancedJi,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)
+                            )
                         }
                     }
                 } else {

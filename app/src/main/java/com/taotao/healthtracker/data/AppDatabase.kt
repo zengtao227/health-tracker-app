@@ -28,7 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "health_tracker_database_v2"
                 )
-                .fallbackToDestructiveMigration()
+                // .fallbackToDestructiveMigration() // ⚠️ 重要：移除这一行，防止升级时数据被删除
                 .build()
                 INSTANCE = instance
                 instance

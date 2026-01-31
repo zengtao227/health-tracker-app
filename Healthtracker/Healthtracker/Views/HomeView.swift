@@ -287,16 +287,20 @@ struct WordFlowView: View {
     let text: String
     
     var body: some View {
-        // 使用 Unicode \u{2060} (Word Joiner) 强制中文字符连在一起不被拆散
-        let processedText = text.components(separatedBy: " ")
-            .filter { !$0.isEmpty }
-            .map { word in
-                // 在单词的每个字符之间插入 Word Joiner
-                word.map { String($0) }.joined(separator: "\u{2060}")
-            }
-            .joined(separator: " ") // 单词之间保留普通空格，允许在这里换行
+        let words = text.components(separatedBy: " ").filter { !$0.isEmpty }
         
-        Text(processedText)
+        // 动态平衡拆分逻辑：如果词数多，则平分为两行以实现垂直对称
+        let displayText: String = {
+            if words.count >= 4 {
+                let mid = (words.count + 1) / 2
+                let topRow = words.prefix(mid).joined(separator: " ")
+                let bottomRow = words.suffix(words.count - mid).joined(separator: " ")
+                return topRow + "\n" + bottomRow
+            }
+            return text
+        }()
+        
+        Text(displayText)
             .font(.subheadline)
             .bold()
             .multilineTextAlignment(.center)
