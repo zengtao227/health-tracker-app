@@ -27,9 +27,6 @@ Healthtracker/Healthtracker.xcodeproj/xcuserdata/
 Thumbs.db
 
 # Release
-releases/*.apk
-releases/*.zip
-# (We keep releases folder but normally we ignore binaries, 
-# but since the user specifically asked to put them there, we allow them)
-!releases/HealthTracker-v1.0.apk
-!releases/HealthTracker-macOS.zip
+# Release
+!releases/*.apk
+!releases/*.zip
