@@ -82,6 +82,9 @@ dependencies {
     // WorkManager (Background Sync)
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
+    // Lunar Calendar (Professional Chinese Almanac - MIT License, 1900-2100)
+    implementation("cn.6tail:lunar:1.7.7")
+
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
