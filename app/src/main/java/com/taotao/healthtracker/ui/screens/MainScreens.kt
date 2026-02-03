@@ -245,8 +245,53 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                 OutlinedTextField(value = uricText, onValueChange = { uricText = it }, label = { Text(L10n.get("uric_acid", appLang)) }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
             }
         }
+        
+        // --- 3.5 Real-time Analysis Preview (AddScreen) ---
+        val liveSbp = sbpText.toIntOrNull()
+        val liveDbp = dbpText.toIntOrNull()
+        val liveWeight = weightText.toFloatOrNull()
+        val profileHeight = (activeProfile?.height ?: 175f)
+        
+        if ((showBp && liveSbp != null && liveDbp != null) || (showWeight && liveWeight != null)) {
+            Spacer(Modifier.height(20.dp))
+            Card(
+                modifier = Modifier.width(310.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(0.15f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.1f))
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if(appLang == "zh") "实时分析 (当前输入)" else "Live Analysis", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    
+                    if (showBp && liveSbp != null && liveDbp != null) {
+                        val s = liveSbp; val d = liveDbp
+                        val (label, color) = when {
+                            s < 120 && d < 80 -> (if(appLang=="zh") "理想" else "Optimal") to ColorGreen
+                            s < 140 && d < 90 -> (if(appLang=="zh") "正常" else "Normal") to Color(0xFF8BC34A)
+                            s < 160 && d < 100 -> (if(appLang=="zh") "一级增高" else "Grade 1") to ColorHrOrange
+                            else -> (if(appLang=="zh") "严重增高" else "Grade 2+") to ColorBpRed
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(8.dp).background(color, CircleShape))
+                            Spacer(Modifier.width(8.dp))
+                            Text("BP: $s/$d - $label", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
 
-        Spacer(Modifier.height(32.dp))
+                    if (showWeight && liveWeight != null) {
+                        val hM = profileHeight / 100f
+                        val liveBmi = liveWeight / (hM * hM)
+                        val (sKey, color) = when { liveBmi < 18.5 -> "bmi_status_under" to ColorBpBlue; liveBmi < 24.9 -> "bmi_status_healthy" to ColorGreen; liveBmi < 29.9 -> "bmi_status_over" to ColorHrOrange; else -> "bmi_status_obese" to ColorBpRed }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(8.dp).background(color, CircleShape))
+                            Spacer(Modifier.width(8.dp))
+                            Text("BMI: ${String.format("%.1f", liveBmi)} (${L10n.get(sKey, appLang)})", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
         Button(
             onClick = {
                 val s = sbpText.toIntOrNull(); val d = dbpText.toIntOrNull(); val h = hrText.toIntOrNull(); val w = weightText.toFloatOrNull()
@@ -396,10 +441,10 @@ fun StatsScreen(viewModel: HealthViewModel) {
             }
         }
 
-        if (filtered.isNotEmpty()) {
-            val last = filtered.first()
+        if (records.isNotEmpty()) {
+            val last = records.first() // Always use the ABSOLUTE latest record for summary
             val heightM = (activeProfile?.height ?: 175f) / 100f
-            val bmi = if (heightM > 0) (last.weight ?: 0f) / (heightM * heightM) else 0f
+            val bmi = if (heightM > 0 && last.weight != null) (last.weight ?: 0f) / (heightM * heightM) else 0f
             val sbp = last.sbp ?: 0
             val dbp = last.dbp ?: 0
             
@@ -539,10 +584,18 @@ fun BpChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
     val sLabel = if (lang == "zh") "收缩压" else "SBP"
     val dLabel = if (lang == "zh") "舒张压" else "DBP"
     
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    
     AndroidView(factory = { ctx -> LineChart(ctx).apply { 
         description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
         axisRight.isEnabled = false; axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
         xAxis.setDrawGridLines(false); extraBottomOffset = 5f
+        
+        // Colors
+        xAxis.textColor = textColor
+        axisLeft.textColor = textColor
+        legend.textColor = textColor
+        
         axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = "${v.toInt()} mmHg" }
         
         // Listener
@@ -575,6 +628,7 @@ fun WeightChart(records: List<HealthRecord>, lang: String, onSelection: (String)
     val rev = records.reversed()
     val wLabel = if (lang == "zh") "体重 (kg)" else "Weight (kg)"
 
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     AndroidView(factory = { ctx -> LineChart(ctx).apply { 
         description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
         
@@ -584,6 +638,11 @@ fun WeightChart(records: List<HealthRecord>, lang: String, onSelection: (String)
         
         xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
         
+        // Colors
+        xAxis.textColor = textColor
+        axisLeft.textColor = textColor
+        legend.textColor = textColor
+
         axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = "${v.toInt()} kg" }
 
         // Listener
@@ -614,12 +673,17 @@ fun HrChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
     val rev = records.reversed()
     val label = if (lang == "zh") "心率" else "HR"
 
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     AndroidView(factory = { ctx -> LineChart(ctx).apply { 
         description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
         axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
         axisRight.isEnabled = false 
         xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
         
+        xAxis.textColor = textColor
+        axisLeft.textColor = textColor
+        legend.textColor = textColor
+
         axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = "${v.toInt()} bpm" }
 
         setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
@@ -649,12 +713,15 @@ fun GlucoseChart(records: List<HealthRecord>, lang: String, onSelection: (String
     val rev = records.reversed()
     val label = if (lang == "zh") "血糖" else "Glucose"
 
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     AndroidView(factory = { ctx -> LineChart(ctx).apply { 
         description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
         axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
         axisRight.isEnabled = false 
         xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
         
+        xAxis.textColor = textColor; axisLeft.textColor = textColor; legend.textColor = textColor
+
         setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
              override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
                  e?.let { 
@@ -682,12 +749,15 @@ fun UricAcidChart(records: List<HealthRecord>, lang: String, onSelection: (Strin
     val rev = records.reversed()
     val label = if (lang == "zh") "尿酸" else "Uric Acid"
 
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     AndroidView(factory = { ctx -> LineChart(ctx).apply { 
         description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
         axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
         axisRight.isEnabled = false 
         xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
         
+        xAxis.textColor = textColor; axisLeft.textColor = textColor; legend.textColor = textColor
+
         setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
              override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
                  e?.let { 
