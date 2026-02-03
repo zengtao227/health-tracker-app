@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModelProvider
 import com.taotao.healthtracker.data.AppDatabase
 import com.taotao.healthtracker.data.HealthRepository
-import com.taotao.healthtracker.ui.HealthTrackerApp
+import com.taotao.healthtracker.ui.HealthTrackerNavHost
 import com.taotao.healthtracker.ui.theme.HealthTrackerTheme
 import com.taotao.healthtracker.viewmodel.HealthViewModel
 import com.taotao.healthtracker.viewmodel.HealthViewModelFactory
@@ -26,12 +26,11 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             HealthTrackerTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    HealthTrackerApp(viewModel)
+                    HealthTrackerNavHost(viewModel)
                 }
             }
         }

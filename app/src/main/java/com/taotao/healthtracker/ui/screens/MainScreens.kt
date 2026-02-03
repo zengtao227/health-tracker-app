@@ -416,10 +416,12 @@ fun StatsScreen(viewModel: HealthViewModel) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                          Text(L10n.get("bmi_live", lang), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                          Spacer(Modifier.width(8.dp))
+                         val activeWeight = last.weight ?: 0f
                          val statusKey = when { bmi < 18.5 -> "bmi_status_under"; bmi < 24.9 -> "bmi_status_healthy"; bmi < 29.9 -> "bmi_status_over"; else -> "bmi_status_obese" }
-                         Text("${String.format("%.1f", bmi)} (${L10n.get(statusKey, lang)})", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                         val bmiText = if (activeWeight > 0) String.format("%.1f", bmi) else "--"
+                         Text("$bmiText (${L10n.get(statusKey, lang)})", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
-                    SoftSegmentGauge(value = bmi, min = 15f, max = 35f, 
+                    SoftSegmentGauge(value = if(last.weight != null) bmi else 0f, min = 15f, max = 35f, 
                         segments = listOf(18.5f to ColorBpBlue, 24.9f to ColorGreen, 29.9f to ColorHrOrange, 35f to ColorBpRed),
                         label = "")
                 }
@@ -558,8 +560,11 @@ fun BpChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
         })
 
     }}, update = { chart ->
-        val sSet = LineDataSet(rev.mapIndexed { i, r -> Entry(i.toFloat(), r.sbp!!.toFloat()) }, sLabel).apply { color = ColorBpRed.toArgb(); lineWidth = 3f; setDrawValues(false); setDrawCircles(true); setCircleColor(ColorBpRed.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb() }
-        val dSet = LineDataSet(rev.mapIndexed { i, r -> Entry(i.toFloat(), r.dbp!!.toFloat()) }, dLabel).apply { color = ColorBpBlue.toArgb(); lineWidth = 3f; setDrawValues(false); setDrawCircles(true); setCircleColor(ColorBpBlue.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb() }
+        val sEntries = rev.mapIndexedNotNull { i, r -> r.sbp?.let { Entry(i.toFloat(), it.toFloat()) } }
+        val dEntries = rev.mapIndexedNotNull { i, r -> r.dbp?.let { Entry(i.toFloat(), it.toFloat()) } }
+        
+        val sSet = LineDataSet(sEntries, sLabel).apply { color = ColorBpRed.toArgb(); lineWidth = 3f; setDrawValues(false); setDrawCircles(true); setCircleColor(ColorBpRed.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb() }
+        val dSet = LineDataSet(dEntries, dLabel).apply { color = ColorBpBlue.toArgb(); lineWidth = 3f; setDrawValues(false); setDrawCircles(true); setCircleColor(ColorBpBlue.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb() }
         chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(sSet, dSet); chart.invalidate()
     }, modifier = Modifier.fillMaxWidth().height(180.dp))
@@ -595,7 +600,8 @@ fun WeightChart(records: List<HealthRecord>, lang: String, onSelection: (String)
              override fun onNothingSelected() { onSelection("") }
         })
     }}, update = { chart ->
-        val wSet = LineDataSet(rev.mapIndexed { i, r -> Entry(i.toFloat(), r.weight!!) }, wLabel).apply { 
+        val wEntries = rev.mapIndexedNotNull { i, r -> r.weight?.let { Entry(i.toFloat(), it) } }
+        val wSet = LineDataSet(wEntries, wLabel).apply { 
             color = ColorWeightPurple.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorWeightPurple.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
         }
         chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }

@@ -31,6 +31,9 @@ abstract class AppDatabase : RoomDatabase() {
                 
                 // Add new column to user_profiles with default value
                 db.execSQL("ALTER TABLE user_profiles ADD COLUMN enabledModules TEXT NOT NULL DEFAULT 'bp,weight,hr'")
+                
+                // CRITICAL: Create the missing Almanac table
+                db.execSQL("CREATE TABLE IF NOT EXISTS `almanac_data` (`date` TEXT NOT NULL, `lunar` TEXT NOT NULL, `yi` TEXT NOT NULL, `ji` TEXT NOT NULL, `chongSha` TEXT NOT NULL, `jiShen` TEXT NOT NULL, `xiongSha` TEXT NOT NULL, PRIMARY KEY(`date`))")
             }
         }
 
@@ -42,6 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "health_tracker_database_v2"
                 )
                 .addMigrations(MIGRATION_8_9)
+                .fallbackToDestructiveMigration() // 终极防御：如果迁移失败，清除数据重建而不是闪退
                 .build()
                 INSTANCE = instance
                 instance
