@@ -579,9 +579,9 @@ fun BpChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     
     AndroidView(factory = { ctx -> LineChart(ctx).apply { 
-        description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
+        xAxis.position = XAxis.XAxisPosition.BOTTOM; 
         axisRight.isEnabled = false; axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
-        xAxis.setDrawGridLines(false); extraBottomOffset = 5f
+        xAxis.setDrawGridLines(false); extraBottomOffset = 10f; extraLeftOffset = 10f
         
         // Colors
         xAxis.textColor = textColor
@@ -608,8 +608,20 @@ fun BpChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
         val sEntries = rev.mapIndexedNotNull { i, r -> r.sbp?.let { Entry(i.toFloat(), it.toFloat()) } }
         val dEntries = rev.mapIndexedNotNull { i, r -> r.dbp?.let { Entry(i.toFloat(), it.toFloat()) } }
         
-        val sSet = LineDataSet(sEntries, sLabel).apply { color = ColorBpRed.toArgb(); lineWidth = 3f; setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f; setDrawCircles(true); setCircleColor(ColorBpRed.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb() }
-        val dSet = LineDataSet(dEntries, dLabel).apply { color = ColorBpBlue.toArgb(); lineWidth = 3f; setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f; setDrawCircles(true); setCircleColor(ColorBpBlue.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb() }
+        val sSet = LineDataSet(sEntries, sLabel).apply { 
+            color = ColorBpRed.toArgb(); lineWidth = 3f; setDrawValues(true); 
+            valueTextColor = Color.White.toArgb(); valueTextSize = 10f; 
+            setDrawCircles(true); setCircleColor(ColorBpRed.toArgb()); circleRadius = 4f; 
+            highLightColor = Color.Transparent.toArgb()
+            valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = v.toInt().toString() }
+        }
+        val dSet = LineDataSet(dEntries, dLabel).apply { 
+            color = ColorBpBlue.toArgb(); lineWidth = 3f; setDrawValues(true); 
+            valueTextColor = Color.White.toArgb(); valueTextSize = 10f; 
+            setDrawCircles(true); setCircleColor(ColorBpBlue.toArgb()); circleRadius = 4f; 
+            highLightColor = Color.Transparent.toArgb()
+            valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = v.toInt().toString() }
+        }
         chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(sSet, dSet); chart.invalidate()
     }, modifier = Modifier.fillMaxWidth().height(180.dp))
@@ -635,7 +647,7 @@ fun WeightChart(records: List<HealthRecord>, lang: String, onSelection: (String)
         axisLeft.textColor = textColor
         legend.textColor = textColor
 
-        axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = "${v.toInt()} kg" }
+        axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f kg", v) }
 
         // Listener
         setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
@@ -655,6 +667,7 @@ fun WeightChart(records: List<HealthRecord>, lang: String, onSelection: (String)
         val wSet = LineDataSet(wEntries, wLabel).apply { 
             color = ColorWeightPurple.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorWeightPurple.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
             setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f
+            valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f", v) }
         }
         chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(wSet); chart.invalidate()
@@ -704,7 +717,7 @@ fun HrChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
 @Composable
 fun GlucoseChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> Unit) {
     val rev = records.reversed()
-    val label = if (lang == "zh") "血糖" else "Glucose"
+    val label = L10n.get("glucose", lang)
 
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     AndroidView(factory = { ctx -> LineChart(ctx).apply { 
@@ -714,6 +727,11 @@ fun GlucoseChart(records: List<HealthRecord>, lang: String, onSelection: (String
         xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
         
         xAxis.textColor = textColor; axisLeft.textColor = textColor; legend.textColor = textColor
+        axisLeft.isEnabled = true
+        xAxis.isEnabled = true
+        axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f", v) }
+        extraLeftOffset = 15f
+        extraBottomOffset = 10f
 
         setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
              override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
@@ -731,6 +749,8 @@ fun GlucoseChart(records: List<HealthRecord>, lang: String, onSelection: (String
         val entries = rev.mapIndexedNotNull { i, r -> r.bloodGlucose?.let { Entry(i.toFloat(), it) } }
         val set = LineDataSet(entries, label).apply { 
             color = ColorGlucose.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorGlucose.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
+            setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f
+            valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f", v) }
         }
         chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(set); chart.invalidate()
@@ -740,7 +760,7 @@ fun GlucoseChart(records: List<HealthRecord>, lang: String, onSelection: (String
 @Composable
 fun UricAcidChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> Unit) {
     val rev = records.reversed()
-    val label = if (lang == "zh") "尿酸" else "Uric Acid"
+    val label = L10n.get("uric_acid", lang)
 
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     AndroidView(factory = { ctx -> LineChart(ctx).apply { 
@@ -750,6 +770,11 @@ fun UricAcidChart(records: List<HealthRecord>, lang: String, onSelection: (Strin
         xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
         
         xAxis.textColor = textColor; axisLeft.textColor = textColor; legend.textColor = textColor
+        axisLeft.isEnabled = true
+        xAxis.isEnabled = true
+        axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f", v) }
+        extraLeftOffset = 15f
+        extraBottomOffset = 10f
 
         setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
              override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
@@ -767,6 +792,8 @@ fun UricAcidChart(records: List<HealthRecord>, lang: String, onSelection: (Strin
         val entries = rev.mapIndexedNotNull { i, r -> r.uricAcid?.let { Entry(i.toFloat(), it) } }
         val set = LineDataSet(entries, label).apply { 
             color = ColorUric.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorUric.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
+            setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f
+            valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f", v) }
         }
         chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(set); chart.invalidate()
