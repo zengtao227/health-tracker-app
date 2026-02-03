@@ -45,3 +45,8 @@ releases/
 *.zip
 *.aar
 *.jks
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
