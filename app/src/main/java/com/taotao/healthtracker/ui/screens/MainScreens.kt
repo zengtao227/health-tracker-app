@@ -445,8 +445,10 @@ fun StatsScreen(viewModel: HealthViewModel) {
             val last = records.first() // Always use the ABSOLUTE latest record for summary
             val heightM = (activeProfile?.height ?: 175f) / 100f
             val bmi = if (heightM > 0 && last.weight != null) (last.weight ?: 0f) / (heightM * heightM) else 0f
-            val sbp = last.sbp ?: 0
-            val dbp = last.dbp ?: 0
+            // 修复：如果最新记录没有血压数据，使用最近一条有血压数据的记录
+            val lastBpRecord = records.firstOrNull { it.sbp != null && it.dbp != null } ?: last
+            val sbp = lastBpRecord.sbp ?: 0
+            val dbp = lastBpRecord.dbp ?: 0
             
             // Interactive States
             var selectedBp by remember { mutableStateOf("") }
@@ -528,16 +530,6 @@ fun StatsScreen(viewModel: HealthViewModel) {
             }
             
             Spacer(Modifier.height(16.dp))
-
-            if (showHr) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(if(lang=="zh") "心率趋势" else "Heart Rate Trend", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary.copy(0.6f))
-                    if(selectedHr.isNotEmpty()) Text(selectedHr, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = ColorHrOrange)
-                }
-                Spacer(Modifier.height(4.dp))
-                HrChart(filtered, lang) { e -> selectedHr = e }
-                Spacer(Modifier.height(16.dp))
-            }
             
             // WEIGHT
             if (showWeight) {
@@ -616,8 +608,8 @@ fun BpChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
         val sEntries = rev.mapIndexedNotNull { i, r -> r.sbp?.let { Entry(i.toFloat(), it.toFloat()) } }
         val dEntries = rev.mapIndexedNotNull { i, r -> r.dbp?.let { Entry(i.toFloat(), it.toFloat()) } }
         
-        val sSet = LineDataSet(sEntries, sLabel).apply { color = ColorBpRed.toArgb(); lineWidth = 3f; setDrawValues(false); setDrawCircles(true); setCircleColor(ColorBpRed.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb() }
-        val dSet = LineDataSet(dEntries, dLabel).apply { color = ColorBpBlue.toArgb(); lineWidth = 3f; setDrawValues(false); setDrawCircles(true); setCircleColor(ColorBpBlue.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb() }
+        val sSet = LineDataSet(sEntries, sLabel).apply { color = ColorBpRed.toArgb(); lineWidth = 3f; setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f; setDrawCircles(true); setCircleColor(ColorBpRed.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb() }
+        val dSet = LineDataSet(dEntries, dLabel).apply { color = ColorBpBlue.toArgb(); lineWidth = 3f; setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f; setDrawCircles(true); setCircleColor(ColorBpBlue.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb() }
         chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(sSet, dSet); chart.invalidate()
     }, modifier = Modifier.fillMaxWidth().height(180.dp))
@@ -662,6 +654,7 @@ fun WeightChart(records: List<HealthRecord>, lang: String, onSelection: (String)
         val wEntries = rev.mapIndexedNotNull { i, r -> r.weight?.let { Entry(i.toFloat(), it) } }
         val wSet = LineDataSet(wEntries, wLabel).apply { 
             color = ColorWeightPurple.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorWeightPurple.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
+            setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f
         }
         chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(wSet); chart.invalidate()
