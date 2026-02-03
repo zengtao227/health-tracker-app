@@ -329,6 +329,13 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("今日黄历", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                         Text(almanac.lunar, style = MaterialTheme.typography.bodySmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                        if (almanac.tianShen.isNotEmpty()) {
+                            val isGold = almanac.tianShenType.contains("黄道")
+                            Text("${almanac.tianShen} [${almanac.tianShenType}]", 
+                                 style = MaterialTheme.typography.labelSmall, 
+                                 fontWeight = FontWeight.ExtraBold,
+                                 color = if(isGold) Color(0xFFB8860B) else Color.Gray)
+                        }
                     }
                     Spacer(Modifier.height(16.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Top) {
@@ -382,6 +389,20 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                             )
                         }
                     }
+                    
+                    if (almanac.jiShi.isNotEmpty()) {
+                        Divider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurface.copy(0.05f))
+                        Text("吉时参考 (部分时辰)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = almanac.jiShi,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 16.sp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 } else {
                     Text("Zodiac Insight", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                     Spacer(Modifier.height(8.dp))
@@ -411,9 +432,22 @@ fun StatsScreen(viewModel: HealthViewModel) {
     var range by remember { mutableStateOf("30") } // 7, 30, 365, MAX
     
     val filtered = remember(records, range) {
-        if (range == "MAX") records else {
-            val limit = if(range == "7") 7 else if(range == "30") 30 else 365
-            records.takeLast(limit)
+        if (range == "MAX") {
+            records.sortedBy { it.date }
+        } else {
+            val daysLimit = range.toIntOrNull() ?: 30
+            val cal = java.util.Calendar.getInstance()
+            cal.add(java.util.Calendar.DAY_OF_YEAR, -daysLimit)
+            // Ensure comparison uses YYYY-MM-DD format
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            val startDate = sdf.format(cal.time)
+            
+            // Filter strictly: only records from startDate onwards, sorted oldest to newest for chart
+            records.filter { 
+                val rDate = it.date.trim()
+                // Simple string comparison works for YYYY-MM-DD
+                rDate >= startDate 
+            }.sortedBy { it.date }
         }
     }
 
@@ -441,14 +475,14 @@ fun StatsScreen(viewModel: HealthViewModel) {
             }
         }
 
-        if (records.isNotEmpty()) {
-            val last = records.first() // Always use the ABSOLUTE latest record for summary
+        if (filtered.isNotEmpty()) {
+            val latestInRange = filtered.last() // The newest record within the selected RANGE
             val heightM = (activeProfile?.height ?: 175f) / 100f
-            val bmi = if (heightM > 0 && last.weight != null) (last.weight ?: 0f) / (heightM * heightM) else 0f
-            // 修复：如果最新记录没有血压数据，使用最近一条有血压数据的记录
-            val lastBpRecord = records.firstOrNull { it.sbp != null && it.dbp != null } ?: last
-            val sbp = lastBpRecord.sbp ?: 0
-            val dbp = lastBpRecord.dbp ?: 0
+            val bmi = if (heightM > 0 && latestInRange.weight != null) latestInRange.weight / (heightM * heightM) else 0f
+            
+            val lastBpRecord = filtered.findLast { it.sbp != null && it.dbp != null }
+            val sbp = lastBpRecord?.sbp ?: 0
+            val dbp = lastBpRecord?.dbp ?: 0
             
             // Interactive States
             var selectedBp by remember { mutableStateOf("") }
@@ -463,12 +497,12 @@ fun StatsScreen(viewModel: HealthViewModel) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                          Text(L10n.get("bmi_live", lang), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                          Spacer(Modifier.width(8.dp))
-                         val activeWeight = last.weight ?: 0f
+                         val activeWeight = latestInRange.weight ?: 0f
                          val statusKey = when { bmi < 18.5 -> "bmi_status_under"; bmi < 24.9 -> "bmi_status_healthy"; bmi < 29.9 -> "bmi_status_over"; else -> "bmi_status_obese" }
                          val bmiText = if (activeWeight > 0) String.format("%.1f", bmi) else "--"
                          Text("$bmiText (${L10n.get(statusKey, lang)})", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
-                    SoftSegmentGauge(value = if(last.weight != null) bmi else 0f, min = 15f, max = 35f, 
+                    SoftSegmentGauge(value = if(latestInRange.weight != null) bmi else 0f, min = 15f, max = 35f, 
                         segments = listOf(18.5f to ColorBpBlue, 24.9f to ColorGreen, 29.9f to ColorHrOrange, 35f to ColorBpRed),
                         label = "")
                 }
@@ -502,9 +536,13 @@ fun StatsScreen(viewModel: HealthViewModel) {
                 Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), colors = CardDefaults.cardColors(containerColor = bpColor.copy(0.1f))) {
                     Column(modifier = Modifier.padding(12.dp)) {
                          Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(if(lang=="zh") "血压分级 (WHO)" else "BP Classification", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            Text(if(lang=="zh") "血压分级 (选取记录)" else "BP Classification (Last In Range)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(8.dp))
-                            Text(bpLabel, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = bpColor.copy(alpha = 1f))
+                            if (lastBpRecord != null) {
+                                Text(bpLabel, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = bpColor.copy(alpha = 1f))
+                            } else {
+                                Text("--", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
                          }
                          // 0..6 Scale. Center of block is n+0.5
                          SoftSegmentGauge(value = bpGrade + 0.5f, min = 0f, max = 6f, 
@@ -572,7 +610,8 @@ fun StatsScreen(viewModel: HealthViewModel) {
 
 @Composable
 fun BpChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> Unit) {
-    val rev = records.reversed()
+    // Input records are already chronological
+    val bpRecords = records.filter { it.sbp != null && it.dbp != null }
     val sLabel = if (lang == "zh") "收缩压" else "SBP"
     val dLabel = if (lang == "zh") "舒张压" else "DBP"
     
@@ -581,22 +620,20 @@ fun BpChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
     AndroidView(factory = { ctx -> LineChart(ctx).apply { 
         xAxis.position = XAxis.XAxisPosition.BOTTOM; 
         axisRight.isEnabled = false; axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
-        xAxis.setDrawGridLines(false); extraBottomOffset = 10f; extraLeftOffset = 10f
+        xAxis.setDrawGridLines(false); extraBottomOffset = 12f; extraLeftOffset = 15f
         
-        // Colors
         xAxis.textColor = textColor
         axisLeft.textColor = textColor
         legend.textColor = textColor
         
-        axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = "${v.toInt()} mmHg" }
+        axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = "${v.toInt()}" }
         
-        // Listener
         setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
              override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
                  e?.let { 
                     val idx = it.x.toInt()
-                    if(idx in rev.indices) {
-                        val r = rev[idx]
+                    if(idx in bpRecords.indices) {
+                        val r = bpRecords[idx]
                         onSelection("${r.date.takeLast(5)}: ${r.sbp}/${r.dbp}")
                     }
                  }
@@ -605,8 +642,8 @@ fun BpChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
         })
 
     }}, update = { chart ->
-        val sEntries = rev.mapIndexedNotNull { i, r -> r.sbp?.let { Entry(i.toFloat(), it.toFloat()) } }
-        val dEntries = rev.mapIndexedNotNull { i, r -> r.dbp?.let { Entry(i.toFloat(), it.toFloat()) } }
+        val sEntries = bpRecords.mapIndexed { i, r -> Entry(i.toFloat(), r.sbp!!.toFloat()) }
+        val dEntries = bpRecords.mapIndexed { i, r -> Entry(i.toFloat(), r.dbp!!.toFloat()) }
         
         val sSet = LineDataSet(sEntries, sLabel).apply { 
             color = ColorBpRed.toArgb(); lineWidth = 3f; setDrawValues(true); 
@@ -622,40 +659,38 @@ fun BpChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
             highLightColor = Color.Transparent.toArgb()
             valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = v.toInt().toString() }
         }
-        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
+        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in bpRecords.indices) bpRecords[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(sSet, dSet); chart.invalidate()
     }, modifier = Modifier.fillMaxWidth().height(180.dp))
 }
 
 @Composable
 fun WeightChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> Unit) {
-    val rev = records.reversed()
+    // Input records are already chronological
+    val weightRecords = records.filter { it.weight != null }
     val wLabel = if (lang == "zh") "体重 (kg)" else "Weight (kg)"
 
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     AndroidView(factory = { ctx -> LineChart(ctx).apply { 
         description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
         
-        // Single Left Axis for Weight
         axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
-        axisRight.isEnabled = false // Disable Right Axis
+        axisRight.isEnabled = false
         
-        xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
+        xAxis.setDrawGridLines(false); extraBottomOffset = 12f; extraLeftOffset = 15f
         
-        // Colors
         xAxis.textColor = textColor
         axisLeft.textColor = textColor
         legend.textColor = textColor
 
-        axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f kg", v) }
+        axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f", v) }
 
-        // Listener
         setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
              override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
                  e?.let { 
                     val idx = it.x.toInt()
-                    if(idx in rev.indices) {
-                        val r = rev[idx]
+                    if(idx in weightRecords.indices) {
+                        val r = weightRecords[idx]
                         onSelection("${r.date.takeLast(5)}: ${r.weight} kg")
                     }
                  }
@@ -663,20 +698,21 @@ fun WeightChart(records: List<HealthRecord>, lang: String, onSelection: (String)
              override fun onNothingSelected() { onSelection("") }
         })
     }}, update = { chart ->
-        val wEntries = rev.mapIndexedNotNull { i, r -> r.weight?.let { Entry(i.toFloat(), it) } }
+        val wEntries = weightRecords.mapIndexed { i, r -> Entry(i.toFloat(), r.weight!!) }
         val wSet = LineDataSet(wEntries, wLabel).apply { 
             color = ColorWeightPurple.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorWeightPurple.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
             setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f
             valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f", v) }
         }
-        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
+        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in weightRecords.indices) weightRecords[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(wSet); chart.invalidate()
     }, modifier = Modifier.fillMaxWidth().height(180.dp))
 }
 
 @Composable
 fun HrChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> Unit) {
-    val rev = records.reversed()
+    // Input records are already chronological
+    val hrRecords = records.filter { it.hr != null }
     val label = if (lang == "zh") "心率" else "HR"
 
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
@@ -684,7 +720,7 @@ fun HrChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
         description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
         axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
         axisRight.isEnabled = false 
-        xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
+        xAxis.setDrawGridLines(false); extraBottomOffset = 12f; extraLeftOffset = 15f
         
         xAxis.textColor = textColor
         axisLeft.textColor = textColor
@@ -696,27 +732,30 @@ fun HrChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> 
              override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
                  e?.let { 
                     val idx = it.x.toInt()
-                    if(idx in rev.indices) {
-                        val r = rev[idx]
-                        onSelection("${r.date.takeLast(5)}: ${r.hr}")
+                    if(idx in hrRecords.indices) {
+                        val r = hrRecords[idx]
+                        onSelection("${r.date.takeLast(5)}: ${r.hr} bpm")
                     }
                  }
              }
              override fun onNothingSelected() { onSelection("") }
         })
     }}, update = { chart ->
-        val entries = rev.mapIndexedNotNull { i, r -> r.hr?.let { Entry(i.toFloat(), it.toFloat()) } }
+        val entries = hrRecords.mapIndexed { i, r -> Entry(i.toFloat(), r.hr!!.toFloat()) }
         val set = LineDataSet(entries, label).apply { 
             color = ColorHrOrange.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorHrOrange.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
+            setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f
+            valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = v.toInt().toString() }
         }
-        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
+        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in hrRecords.indices) hrRecords[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(set); chart.invalidate()
     }, modifier = Modifier.fillMaxWidth().height(180.dp))
 }
 
 @Composable
 fun GlucoseChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> Unit) {
-    val rev = records.reversed()
+    // Input records are already chronological
+    val glucoseRecords = records.filter { it.bloodGlucose != null }
     val label = L10n.get("glucose", lang)
 
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
@@ -724,21 +763,19 @@ fun GlucoseChart(records: List<HealthRecord>, lang: String, onSelection: (String
         description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
         axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
         axisRight.isEnabled = false 
-        xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
         
         xAxis.textColor = textColor; axisLeft.textColor = textColor; legend.textColor = textColor
         axisLeft.isEnabled = true
         xAxis.isEnabled = true
         axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f", v) }
-        extraLeftOffset = 15f
-        extraBottomOffset = 10f
+        xAxis.setDrawGridLines(false); extraBottomOffset = 12f; extraLeftOffset = 15f
 
         setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
              override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
                  e?.let { 
                     val idx = it.x.toInt()
-                    if(idx in rev.indices) {
-                        val r = rev[idx]
+                    if(idx in glucoseRecords.indices) {
+                        val r = glucoseRecords[idx]
                         onSelection("${r.date.takeLast(5)}: ${r.bloodGlucose}")
                     }
                  }
@@ -746,20 +783,21 @@ fun GlucoseChart(records: List<HealthRecord>, lang: String, onSelection: (String
              override fun onNothingSelected() { onSelection("") }
         })
     }}, update = { chart ->
-        val entries = rev.mapIndexedNotNull { i, r -> r.bloodGlucose?.let { Entry(i.toFloat(), it) } }
+        val entries = glucoseRecords.mapIndexed { i, r -> Entry(i.toFloat(), r.bloodGlucose!!) }
         val set = LineDataSet(entries, label).apply { 
             color = ColorGlucose.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorGlucose.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
             setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f
             valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f", v) }
         }
-        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
+        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in glucoseRecords.indices) glucoseRecords[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(set); chart.invalidate()
     }, modifier = Modifier.fillMaxWidth().height(180.dp))
 }
 
 @Composable
 fun UricAcidChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> Unit) {
-    val rev = records.reversed()
+    // Input records are already chronological
+    val uricRecords = records.filter { it.uricAcid != null }
     val label = L10n.get("uric_acid", lang)
 
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
@@ -767,21 +805,19 @@ fun UricAcidChart(records: List<HealthRecord>, lang: String, onSelection: (Strin
         description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
         axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
         axisRight.isEnabled = false 
-        xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
+        xAxis.setDrawGridLines(false); extraBottomOffset = 10f; extraLeftOffset = 15f
         
         xAxis.textColor = textColor; axisLeft.textColor = textColor; legend.textColor = textColor
         axisLeft.isEnabled = true
         xAxis.isEnabled = true
         axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f", v) }
-        extraLeftOffset = 15f
-        extraBottomOffset = 10f
 
         setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
              override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
                  e?.let { 
                     val idx = it.x.toInt()
-                    if(idx in rev.indices) {
-                        val r = rev[idx]
+                    if(idx in uricRecords.indices) {
+                        val r = uricRecords[idx]
                         onSelection("${r.date.takeLast(5)}: ${r.uricAcid}")
                     }
                  }
@@ -789,13 +825,13 @@ fun UricAcidChart(records: List<HealthRecord>, lang: String, onSelection: (Strin
              override fun onNothingSelected() { onSelection("") }
         })
     }}, update = { chart ->
-        val entries = rev.mapIndexedNotNull { i, r -> r.uricAcid?.let { Entry(i.toFloat(), it) } }
+        val entries = uricRecords.mapIndexed { i, r -> Entry(i.toFloat(), r.uricAcid!!) }
         val set = LineDataSet(entries, label).apply { 
             color = ColorUric.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorUric.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
             setDrawValues(true); valueTextColor = Color.White.toArgb(); valueTextSize = 10f
             valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = String.format("%.1f", v) }
         }
-        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
+        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in uricRecords.indices) uricRecords[v.toInt()].date.takeLast(5) else "" }
         chart.data = LineData(set); chart.invalidate()
     }, modifier = Modifier.fillMaxWidth().height(180.dp))
 }

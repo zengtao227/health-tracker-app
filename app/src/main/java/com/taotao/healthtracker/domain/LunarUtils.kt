@@ -20,9 +20,12 @@ object LunarUtils {
         val lunar: String,      // 干支年+生肖+农历月日+建除神
         val yi: String,         // 宜
         val ji: String,         // 忌
+        val tianShen: String = "",   // 值神 (如: 司命)
+        val tianShenType: String = "", // 黄道/黑道
         val chongSha: String = "",  // 冲煞
         val jiShen: String = "",    // 吉神
-        val xiongSha: String = ""   // 凶煞
+        val xiongSha: String = "",  // 凶煞
+        val jiShi: String = ""      // 吉时参考
     )
 
     /**
@@ -41,8 +44,10 @@ object LunarUtils {
         val monthChinese = lunar.monthInChinese   // 如 "正月"
         val dayChinese = lunar.dayInChinese       // 如 "初一"
 
-        // 2. 建除十二神
+        // 2. 建除十二神与值神
         val zhiXing = lunar.zhiXing               // 如 "建"
+        val tianShen = lunar.dayTianShen          // 值神 (如 "司命")
+        val tianShenType = lunar.dayTianShenType  // 黄道/黑道
 
         // 3. 宜忌 (库返回 List<String>)
         val yiList = lunar.dayYi ?: emptyList()
@@ -50,13 +55,13 @@ object LunarUtils {
 
         // 防碎词处理：词内部用 \u2060 绑定，词之间用空格分隔
         val WJ = "\u2060"
-        val formatPhrases: (List<String>) -> String = { list ->
+        val formatPhrases: (List<String>, Int) -> String = { list, count ->
             if (list.isEmpty()) "诸事不宜"
-            else list.take(8).joinToString(" ") { word -> word.chunked(1).joinToString(WJ) }
+            else list.take(count).joinToString(" ") { word -> word.chunked(1).joinToString(WJ) }
         }
 
-        val yiFormatted = formatPhrases(yiList)
-        val jiFormatted = formatPhrases(jiList)
+        val yiFormatted = formatPhrases(yiList, 15)
+        val jiFormatted = formatPhrases(jiList, 10)
 
         // 4. 冲煞信息
         val chong = lunar.dayChongDesc ?: lunar.dayChong ?: ""
@@ -66,8 +71,26 @@ object LunarUtils {
         // 5. 吉神凶煞
         val jiShenList = lunar.dayJiShen ?: emptyList()
         val xiongShaList = lunar.dayXiongSha ?: emptyList()
-        val jiShen = jiShenList.take(4).joinToString("、").ifEmpty { "无" }
-        val xiongSha = xiongShaList.take(4).joinToString("、").ifEmpty { "无" }
+        val jiShen = jiShenList.take(6).joinToString("、").ifEmpty { "无" }
+        val xiongSha = xiongShaList.take(6).joinToString("、").ifEmpty { "无" }
+
+        // 6. 吉时参考 (取几个关键时辰)
+        val jiShiBuilder = StringBuilder()
+        val hourTimes = lunar.times
+        // 取前几个或全部
+        hourTimes.take(12).forEach { lt ->
+            val hourRange = when(lt.zhi) {
+                "子" -> "23:00-00:59"; "丑" -> "01:00-02:59"; "寅" -> "03:00-04:59"
+                "卯" -> "05:00-06:59"; "辰" -> "07:00-08:59"; "巳" -> "09:00-10:59"
+                "午" -> "11:00-12:59"; "未" -> "13:00-14:59"; "申" -> "15:00-16:59"
+                "酉" -> "17:00-18:59"; "戌" -> "19:00-20:59"; "亥" -> "21:00-22:59"
+                else -> ""
+            }
+            if (lt.yi.isNotEmpty() && lt.yi[0] != "无") {
+                jiShiBuilder.append("${lt.zhi}时($hourRange) 宜: ${lt.yi.take(3).joinToString(" ")}\n")
+            }
+        }
+        val jiShi = jiShiBuilder.toString().trim()
 
         // 组装农历显示字符串
         val lunarStr = "${yearGanZhi}${animal}年 · ${monthChinese}月${dayChinese} [${zhiXing}日]"
@@ -76,9 +99,12 @@ object LunarUtils {
             lunar = lunarStr,
             yi = yiFormatted,
             ji = jiFormatted,
+            tianShen = tianShen,
+            tianShenType = tianShenType,
             chongSha = chongSha,
             jiShen = jiShen,
-            xiongSha = xiongSha
+            xiongSha = xiongSha,
+            jiShi = jiShi
         )
     }
 
