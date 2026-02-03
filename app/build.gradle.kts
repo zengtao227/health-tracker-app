@@ -23,11 +23,20 @@ android {
 
     signingConfigs {
         create("release") {
-            // 使用调试签名进行发布（仅用于测试）
-            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            val keyStoreFile = file("${rootDir}/release.keystore")
+            if (keyStoreFile.exists()) {
+                storeFile = keyStoreFile
+                storePassword = "password"
+                keyAlias = "my-key-alias"
+                keyPassword = "password"
+            } else {
+                // Fallback to debug keystore if release.keystore doesn't exist (for local testing)
+                // In production, this path implies you generated the keystore locally.
+                storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
         }
     }
 
