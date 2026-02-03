@@ -1,3 +1,5 @@
+@file:Suppress("unused", "UNUSED_PARAMETER", "SpellCheckingInspection")
+
 package com.taotao.healthtracker.ui.screens
 
 import androidx.compose.foundation.*
@@ -8,10 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.Divider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,17 +29,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Intent
 import android.net.Uri
-import java.io.File
-import androidx.core.content.FileProvider
 import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.taotao.healthtracker.data.entity.HealthRecord
 import com.taotao.healthtracker.data.entity.UserProfile
 import com.taotao.healthtracker.domain.DateUtils
-import com.taotao.healthtracker.domain.LunarUtils
 import com.taotao.healthtracker.viewmodel.HealthViewModel
 import com.taotao.healthtracker.ui.L10n
 import java.text.SimpleDateFormat
@@ -50,6 +46,8 @@ val ColorBpBlue = Color(0xFF2196F3)
 val ColorHrOrange = Color(0xFFFF9800)
 val ColorWeightPurple = Color(0xFF9C27B0)
 val ColorGreen = Color(0xFF43A047)
+val ColorGlucose = Color(0xFF009688) // Teal
+val ColorUric = Color(0xFF795548) // Brown
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,7 +59,16 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
     val insLang = activeProfile?.insightLanguage ?: "zh"
     val almanac by viewModel.currentAlmanac.collectAsState()
     
-    val todayDate = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
+    // Module Visibility Logic
+    val modules = remember(activeProfile?.enabledModules) {
+        activeProfile?.enabledModules?.split(",")?.map { it.trim() } ?: listOf("bp", "weight", "hr")
+    }
+    val showBp = modules.contains("bp")
+    val showWeight = modules.contains("weight")
+    val showHr = modules.contains("hr")
+    val showGlucose = modules.contains("glucose")
+    val showUric = modules.contains("uric")
+    
     val westernDateStr = remember(appLang) { 
         if(appLang == "zh") SimpleDateFormat("M月d日").format(Date()) 
         else SimpleDateFormat("MMM dd, yyyy", Locale.ENGLISH).format(Date()) 
@@ -78,6 +85,8 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
     var dbpText by remember { mutableStateOf("") }
     var hrText by remember { mutableStateOf("") }
     var weightText by remember { mutableStateOf("") }
+    var glucoseText by remember { mutableStateOf("") }
+    var uricText by remember { mutableStateOf("") }
 
     LaunchedEffect(activeProfile) {
         activeProfile?.let {
@@ -214,21 +223,46 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
 
         // --- 3. Body Inputs ---
         Column(modifier = Modifier.width(310.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            OutlinedTextField(value = sbpText, onValueChange = { sbpText = it }, label = { Text(L10n.get("sbp", appLang)) }, textStyle = MaterialTheme.typography.displaySmall, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-            OutlinedTextField(value = dbpText, onValueChange = { dbpText = it }, label = { Text(L10n.get("dbp", appLang)) }, textStyle = MaterialTheme.typography.displaySmall, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            if (showBp) {
+                OutlinedTextField(value = sbpText, onValueChange = { sbpText = it }, label = { Text(L10n.get("sbp", appLang)) }, textStyle = MaterialTheme.typography.displaySmall, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                OutlinedTextField(value = dbpText, onValueChange = { dbpText = it }, label = { Text(L10n.get("dbp", appLang)) }, textStyle = MaterialTheme.typography.displaySmall, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            }
+            
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(value = hrText, onValueChange = { hrText = it }, label = { Text(L10n.get("hr", appLang)) }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                OutlinedTextField(value = weightText, onValueChange = { weightText = it }, label = { Text(L10n.get("weight", appLang)) }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                if (showHr) {
+                    OutlinedTextField(value = hrText, onValueChange = { hrText = it }, label = { Text(L10n.get("hr", appLang)) }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                }
+                if (showWeight) {
+                    OutlinedTextField(value = weightText, onValueChange = { weightText = it }, label = { Text(L10n.get("weight", appLang)) }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                }
+            }
+            
+            // Optional Modules
+            if (showGlucose) {
+                OutlinedTextField(value = glucoseText, onValueChange = { glucoseText = it }, label = { Text(L10n.get("glucose", appLang)) }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            }
+            if (showUric) {
+                OutlinedTextField(value = uricText, onValueChange = { uricText = it }, label = { Text(L10n.get("uric_acid", appLang)) }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
             }
         }
 
         Spacer(Modifier.height(32.dp))
         Button(
             onClick = {
-                val s = sbpText.toIntOrNull(); val d = dbpText.toIntOrNull(); val h = hrText.toIntOrNull(); val w = weightText.toFloatOrNull() ?: 0f
-                if (s != null && d != null && h != null) {
-                    viewModel.saveRecord(HealthRecord(userId = activeProfile?.id ?: 1, date = DateUtils.getCurrentDate(), sbp = s, dbp = d, hr = h, weight = w))
-                    sbpText = ""; dbpText = ""; hrText = ""; weightText = ""
+                val s = sbpText.toIntOrNull(); val d = dbpText.toIntOrNull(); val h = hrText.toIntOrNull(); val w = weightText.toFloatOrNull()
+                val glu = glucoseText.toFloatOrNull(); val uri = uricText.toFloatOrNull()
+                
+                val hasBp = s != null && d != null
+                val hasData = hasBp || (showWeight && w != null) || (showHr && h != null) || (showGlucose && glu != null) || (showUric && uri != null)
+                
+                if (hasData) {
+                    viewModel.saveRecord(HealthRecord(
+                        userId = activeProfile?.id ?: 1, 
+                        date = DateUtils.getCurrentDate(), 
+                        sbp = s, dbp = d, hr = h, weight = w,
+                        bloodGlucose = glu, uricAcid = uri
+                    ))
+                    sbpText = ""; dbpText = ""; hrText = ""; weightText = ""; glucoseText = ""; uricText = ""
                     onSaveSuccess()
                 }
             },
@@ -247,7 +281,6 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
         ) {
             Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (insLang == "zh") {
-                    // --- MODE: AUTHENTIC ALMANAC (Real or Local) ---
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("今日黄历", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                         Text(almanac.lunar, style = MaterialTheme.typography.bodySmall, color = Color.Gray, fontWeight = FontWeight.Bold)
@@ -260,7 +293,6 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                             }
                             Spacer(Modifier.height(10.dp))
                             
-                            // 动态中间拆分，实现上下行对称
                             val yiWords = almanac.yi.split(" ").filter { it.isNotBlank() }
                             val balancedYi = if (yiWords.size >= 4) {
                                 val mid = (yiWords.size + 1) / 2
@@ -285,7 +317,7 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                                 Text("忌", color = Color.White, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black) 
                             }
                             Spacer(Modifier.height(10.dp))
-
+                            
                             val jiWords = almanac.ji.split(" ").filter { it.isNotBlank() }
                             val balancedJi = if (jiWords.size >= 4) {
                                 val mid = (jiWords.size + 1) / 2
@@ -293,7 +325,7 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                             } else {
                                 almanac.ji
                             }
-
+                            
                             Text(
                                 text = balancedJi,
                                 fontSize = 13.sp,
@@ -306,55 +338,58 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                         }
                     }
                 } else {
-                    // --- MODE: WESTERN ZODIAC (星座) ---
-                    val zodiac = LunarUtils.getZodiac(activeProfile?.birthMonth ?: 1, activeProfile?.birthDay ?: 1)
-                    val horo = LunarUtils.getHoroscopeInsight(zodiac)
-                    Text("$zodiac Daily Horoscope", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(12.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("STRENGTH", color = ColorBpBlue, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                            Text(horo.first, fontSize = 14.sp)
-                        }
-                        Box(Modifier.width(1.dp).height(40.dp).background(MaterialTheme.colorScheme.onSurface.copy(0.1f)))
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("BEWARE", color = ColorHrOrange, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                            Text(horo.second, fontSize = 14.sp)
-                        }
-                    }
+                    Text("Zodiac Insight", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(almanac.lunar, style = MaterialTheme.typography.bodyMedium, color = Color.Gray, textAlign = TextAlign.Center)
                 }
             }
         }
     }
 }
 
-// StatsScreen
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(viewModel: HealthViewModel) {
     val records by viewModel.allRecords.collectAsState()
     val activeProfile by viewModel.currentUserProfile.collectAsState()
     val lang = activeProfile?.language ?: "zh"
-    var filterRange by remember { mutableStateOf("All") }
     
-    val filtered = remember(records, filterRange) {
-        when(filterRange) {
-            "7D" -> records.filter { DateUtils.getDaysDiff(it.date) <= 7 }
-            "30D" -> records.filter { DateUtils.getDaysDiff(it.date) <= 30 }
-            else -> records
+    // Module Visibility Logic
+    val modules = remember(activeProfile?.enabledModules) {
+        activeProfile?.enabledModules?.split(",")?.map { it.trim() } ?: listOf("bp", "weight", "hr")
+    }
+    val showBp = modules.contains("bp")
+    val showWeight = modules.contains("weight")
+    val showHr = modules.contains("hr")
+    val showGlucose = modules.contains("glucose")
+    val showUric = modules.contains("uric")
+
+    var range by remember { mutableStateOf("30") } // 7, 30, 365, MAX
+    
+    val filtered = remember(records, range) {
+        if (range == "MAX") records else {
+            val limit = if(range == "7") 7 else if(range == "30") 30 else 365
+            records.takeLast(limit)
         }
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("${L10n.get("nav_trends", lang)}: ${activeProfile?.name ?: "P1"}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-            Spacer(Modifier.weight(1f)) // Push filters to the right
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                listOf("7D", "30D", "1Y", "All").forEach { r ->
-                    FilterChip(selected = filterRange == r, onClick = { filterRange = r }, label = { Text(r, fontSize = 10.sp) }, modifier = Modifier.padding(start = 2.dp)) // Tighter padding
+            Text(L10n.get("nav_trends", lang), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            
+            // Range Selector
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("7", "30", "365", "MAX").forEach { r ->
+                    val selected = range == r
+                    Surface(
+                        onClick = { range = r },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if(selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        border = if(!selected) BorderStroke(1.dp, Color.Gray.copy(0.3f)) else null
+                    ) {
+                        Text(if(r=="365") "1Y" else r, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), 
+                             color = if(selected) Color.White else Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
-                Spacer(Modifier.width(8.dp))
-                // Compact Language Switcher
                 TextButton(onClick = { activeProfile?.let { viewModel.saveProfile(it.copy(language = if(lang == "zh") "en" else "zh")) } }, contentPadding = PaddingValues(0.dp)) {
                     Text(if(lang == "zh") "En" else "中", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
@@ -371,6 +406,9 @@ fun StatsScreen(viewModel: HealthViewModel) {
             // Interactive States
             var selectedBp by remember { mutableStateOf("") }
             var selectedWt by remember { mutableStateOf("") }
+            var selectedHr by remember { mutableStateOf("") }
+            var selectedGlu by remember { mutableStateOf("") }
+            var selectedUric by remember { mutableStateOf("") }
 
             // 1. BMI Card (Soft Gradient Segments)
             Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(0.1f))) {
@@ -388,68 +426,104 @@ fun StatsScreen(viewModel: HealthViewModel) {
             }
             
             // 2. Unified BP Gauge (WHO Classification)
-            // Logic: Max(Grade(SBP), Grade(DBP))
-            // 0:Optimal, 1:Normal, 2:HighNormal, 3:Grade1, 4:Grade2, 5:Grade3
-            fun getBpGrade(s: Int, d: Int): Int {
-                val sG = when { s < 120 -> 0; s < 130 -> 1; s < 140 -> 2; s < 160 -> 3; s < 180 -> 4; else -> 5 }
-                val dG = when { d < 80 -> 0; d < 85 -> 1; d < 90 -> 2; d < 100 -> 3; d < 110 -> 4; else -> 5 }
-                return maxOf(sG, dG)
-            }
-            val bpGrade = getBpGrade(sbp, dbp)
-            val bpLabel = when(bpGrade) {
-                0 -> if(lang=="zh") "理想" else "Optimal"
-                1 -> if(lang=="zh") "正常" else "Normal"
-                2 -> if(lang=="zh") "正常高值" else "High Normal"
-                3 -> if(lang=="zh") "1级高血压" else "Grade 1"
-                4 -> if(lang=="zh") "2级高血压" else "Grade 2"
-                else -> if(lang=="zh") "3级高血压" else "Grade 3"
-            }
-            val bpColor = when(bpGrade) {
-                0 -> ColorGreen
-                1 -> Color(0xFF8BC34A) // Light Green
-                2 -> Color(0xFFFFEB3B) // Yellow
-                3 -> ColorHrOrange
-                4 -> ColorBpRed
-                else -> Color(0xFF8B0000) // Dark Red
-            }
-
-            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), colors = CardDefaults.cardColors(containerColor = bpColor.copy(0.1f))) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(if(lang=="zh") "血压分级 (WHO)" else "BP Classification", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
-                        Text(bpLabel, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = bpColor.copy(alpha = 1f))
-                     }
-                     // 0..6 Scale. Center of block is n+0.5
-                     SoftSegmentGauge(value = bpGrade + 0.5f, min = 0f, max = 6f, 
-                        segments = listOf(
-                            1f to ColorGreen, 
-                            2f to Color(0xFF8BC34A), 
-                            3f to Color(0xFFFFEB3B), 
-                            4f to ColorHrOrange, 
-                            5f to ColorBpRed, 
-                            6f to Color(0xFF8B0000)
-                        ), 
-                        label = "")
+            if (showBp) {
+                fun getBpGrade(s: Int, d: Int): Int {
+                    val sG = when { s < 120 -> 0; s < 130 -> 1; s < 140 -> 2; s < 160 -> 3; s < 180 -> 4; else -> 5 }
+                    val dG = when { d < 80 -> 0; d < 85 -> 1; d < 90 -> 2; d < 100 -> 3; d < 110 -> 4; else -> 5 }
+                    return maxOf(sG, dG)
                 }
-            }
+                val bpGrade = getBpGrade(sbp, dbp)
+                val bpLabel = when(bpGrade) {
+                    0 -> if(lang=="zh") "理想" else "Optimal"
+                    1 -> if(lang=="zh") "正常" else "Normal"
+                    2 -> if(lang=="zh") "正常高值" else "High Normal"
+                    3 -> if(lang=="zh") "1级高血压" else "Grade 1"
+                    4 -> if(lang=="zh") "2级高血压" else "Grade 2"
+                    else -> if(lang=="zh") "3级高血压" else "Grade 3"
+                }
+                val bpColor = when(bpGrade) {
+                    0 -> ColorGreen
+                    1 -> Color(0xFF8BC34A) // Light Green
+                    2 -> Color(0xFFFFEB3B) // Yellow
+                    3 -> ColorHrOrange
+                    4 -> ColorBpRed
+                    else -> Color(0xFF8B0000) // Dark Red
+                }
 
-            Spacer(Modifier.height(4.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(L10n.get("bp_chart", lang), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary.copy(0.6f))
-                if(selectedBp.isNotEmpty()) Text(selectedBp, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = ColorBpRed)
+                Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), colors = CardDefaults.cardColors(containerColor = bpColor.copy(0.1f))) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(if(lang=="zh") "血压分级 (WHO)" else "BP Classification", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(8.dp))
+                            Text(bpLabel, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = bpColor.copy(alpha = 1f))
+                         }
+                         // 0..6 Scale. Center of block is n+0.5
+                         SoftSegmentGauge(value = bpGrade + 0.5f, min = 0f, max = 6f, 
+                            segments = listOf(
+                                1f to ColorGreen, 
+                                2f to Color(0xFF8BC34A), 
+                                3f to Color(0xFFFFEB3B), 
+                                4f to ColorHrOrange, 
+                                5f to ColorBpRed, 
+                                6f to Color(0xFF8B0000)
+                            ), 
+                            label = "")
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(L10n.get("bp_chart", lang), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary.copy(0.6f))
+                    if(selectedBp.isNotEmpty()) Text(selectedBp, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = ColorBpRed)
+                }
+                Spacer(Modifier.height(4.dp))
+                BpChart(filtered, lang) { e -> selectedBp = e }
             }
-            Spacer(Modifier.height(4.dp))
-            BpChart(filtered, lang) { e -> selectedBp = e }
             
             Spacer(Modifier.height(16.dp))
-            // WEIGHT ONLY
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                 Text(if(lang=="zh") "体重趋势" else "Weight Trend", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary.copy(0.6f))
-                 if(selectedWt.isNotEmpty()) Text(selectedWt, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = ColorWeightPurple)
+
+            if (showHr) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(if(lang=="zh") "心率趋势" else "Heart Rate Trend", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary.copy(0.6f))
+                    if(selectedHr.isNotEmpty()) Text(selectedHr, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = ColorHrOrange)
+                }
+                Spacer(Modifier.height(4.dp))
+                HrChart(filtered, lang) { e -> selectedHr = e }
+                Spacer(Modifier.height(16.dp))
             }
-            Spacer(Modifier.height(4.dp))
-            WeightChart(filtered, lang) { e -> selectedWt = e } // Renamed from VitalChart
+            
+            // WEIGHT
+            if (showWeight) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                     Text(if(lang=="zh") "体重趋势" else "Weight Trend", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary.copy(0.6f))
+                     if(selectedWt.isNotEmpty()) Text(selectedWt, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = ColorWeightPurple)
+                }
+                Spacer(Modifier.height(4.dp))
+                WeightChart(filtered, lang) { e -> selectedWt = e }
+                Spacer(Modifier.height(16.dp))
+            }
+
+            // GLUCOSE
+            if (showGlucose) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                     Text(L10n.get("glucose", lang), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary.copy(0.6f))
+                     if(selectedGlu.isNotEmpty()) Text(selectedGlu, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = ColorGlucose)
+                }
+                Spacer(Modifier.height(4.dp))
+                GlucoseChart(filtered, lang) { e -> selectedGlu = e }
+                Spacer(Modifier.height(16.dp))
+            }
+
+            // URIC ACID
+            if (showUric) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                     Text(L10n.get("uric_acid", lang), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary.copy(0.6f))
+                     if(selectedUric.isNotEmpty()) Text(selectedUric, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = ColorUric)
+                }
+                Spacer(Modifier.height(4.dp))
+                UricAcidChart(filtered, lang) { e -> selectedUric = e }
+            }
+            
             Spacer(Modifier.height(24.dp))
         } else {
             Box(Modifier.fillMaxSize().padding(top = 100.dp), contentAlignment = Alignment.Center) { Text(L10n.get("no_data", lang)) }
@@ -530,16 +604,160 @@ fun WeightChart(records: List<HealthRecord>, lang: String, onSelection: (String)
 }
 
 @Composable
-fun KnowledgeScreen(viewModel: HealthViewModel) {
+fun HrChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> Unit) {
+    val rev = records.reversed()
+    val label = if (lang == "zh") "心率" else "HR"
+
+    AndroidView(factory = { ctx -> LineChart(ctx).apply { 
+        description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
+        axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
+        axisRight.isEnabled = false 
+        xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
+        
+        axisLeft.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = "${v.toInt()} bpm" }
+
+        setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
+             override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
+                 e?.let { 
+                    val idx = it.x.toInt()
+                    if(idx in rev.indices) {
+                        val r = rev[idx]
+                        onSelection("${r.date.takeLast(5)}: ${r.hr}")
+                    }
+                 }
+             }
+             override fun onNothingSelected() { onSelection("") }
+        })
+    }}, update = { chart ->
+        val entries = rev.mapIndexedNotNull { i, r -> r.hr?.let { Entry(i.toFloat(), it.toFloat()) } }
+        val set = LineDataSet(entries, label).apply { 
+            color = ColorHrOrange.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorHrOrange.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
+        }
+        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
+        chart.data = LineData(set); chart.invalidate()
+    }, modifier = Modifier.fillMaxWidth().height(180.dp))
+}
+
+@Composable
+fun GlucoseChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> Unit) {
+    val rev = records.reversed()
+    val label = if (lang == "zh") "血糖" else "Glucose"
+
+    AndroidView(factory = { ctx -> LineChart(ctx).apply { 
+        description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
+        axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
+        axisRight.isEnabled = false 
+        xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
+        
+        setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
+             override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
+                 e?.let { 
+                    val idx = it.x.toInt()
+                    if(idx in rev.indices) {
+                        val r = rev[idx]
+                        onSelection("${r.date.takeLast(5)}: ${r.bloodGlucose}")
+                    }
+                 }
+             }
+             override fun onNothingSelected() { onSelection("") }
+        })
+    }}, update = { chart ->
+        val entries = rev.mapIndexedNotNull { i, r -> r.bloodGlucose?.let { Entry(i.toFloat(), it) } }
+        val set = LineDataSet(entries, label).apply { 
+            color = ColorGlucose.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorGlucose.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
+        }
+        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
+        chart.data = LineData(set); chart.invalidate()
+    }, modifier = Modifier.fillMaxWidth().height(180.dp))
+}
+
+@Composable
+fun UricAcidChart(records: List<HealthRecord>, lang: String, onSelection: (String) -> Unit) {
+    val rev = records.reversed()
+    val label = if (lang == "zh") "尿酸" else "Uric Acid"
+
+    AndroidView(factory = { ctx -> LineChart(ctx).apply { 
+        description.isEnabled = false; xAxis.position = XAxis.XAxisPosition.BOTTOM; 
+        axisLeft.setSpaceTop(20f); axisLeft.setSpaceBottom(20f)
+        axisRight.isEnabled = false 
+        xAxis.setDrawGridLines(false); extraBottomOffset = 5f 
+        
+        setOnChartValueSelectedListener(object : com.github.mikephil.charting.listener.OnChartValueSelectedListener {
+             override fun onValueSelected(e: Entry?, h: com.github.mikephil.charting.highlight.Highlight?) {
+                 e?.let { 
+                    val idx = it.x.toInt()
+                    if(idx in rev.indices) {
+                        val r = rev[idx]
+                        onSelection("${r.date.takeLast(5)}: ${r.uricAcid}")
+                    }
+                 }
+             }
+             override fun onNothingSelected() { onSelection("") }
+        })
+    }}, update = { chart ->
+        val entries = rev.mapIndexedNotNull { i, r -> r.uricAcid?.let { Entry(i.toFloat(), it) } }
+        val set = LineDataSet(entries, label).apply { 
+            color = ColorUric.toArgb(); lineWidth = 3f; setDrawCircles(true); setCircleColor(ColorUric.toArgb()); circleRadius = 4f; highLightColor = Color.Transparent.toArgb()
+        }
+        chart.xAxis.valueFormatter = object : ValueFormatter() { override fun getFormattedValue(v: Float) = if(v.toInt() in rev.indices) rev[v.toInt()].date.takeLast(5) else "" }
+        chart.data = LineData(set); chart.invalidate()
+    }, modifier = Modifier.fillMaxWidth().height(180.dp))
+}
+
+@Composable
+fun SettingsScreen(viewModel: HealthViewModel) {
     val activeProfile by viewModel.currentUserProfile.collectAsState()
     val lang = activeProfile?.language ?: "zh"
+    
+    val modules = remember(activeProfile?.enabledModules) {
+        activeProfile?.enabledModules?.split(",")?.map { it.trim() } ?: listOf("bp", "weight", "hr")
+    }
+
+    fun toggleModule(code: String) {
+        activeProfile?.let { p ->
+            val current = modules.toMutableList()
+            if (current.contains(code)) current.remove(code) else current.add(code)
+            viewModel.saveProfile(p.copy(enabledModules = current.joinToString(",")))
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(L10n.get("medical_ref", lang), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(L10n.get("nav_ref", lang), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             TextButton(onClick = { activeProfile?.let { viewModel.saveProfile(it.copy(language = if(lang == "zh") "en" else "zh")) } }) {
                 Text(if(lang == "zh") "Switch to English" else "切换中文")
             }
         }
+
+        // --- Module Settings ---
+        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(0.1f))) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(L10n.get("modules_title", lang), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Divider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
+                
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(if(lang=="zh") "血压监测 (BP)" else "Blood Pressure", fontSize = 15.sp)
+                    Switch(checked = modules.contains("bp"), onCheckedChange = { toggleModule("bp") })
+                }
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(if(lang=="zh") "体重记录 (Weight)" else "Body Weight", fontSize = 15.sp)
+                    Switch(checked = modules.contains("weight"), onCheckedChange = { toggleModule("weight") })
+                }
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(if(lang=="zh") "心率监测 (Heart Rate)" else "Heart Rate", fontSize = 15.sp)
+                    Switch(checked = modules.contains("hr"), onCheckedChange = { toggleModule("hr") })
+                }
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(L10n.get("enable_glucose", lang), fontSize = 15.sp)
+                    Switch(checked = modules.contains("glucose"), onCheckedChange = { toggleModule("glucose") })
+                }
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(L10n.get("enable_uric", lang), fontSize = 15.sp)
+                    Switch(checked = modules.contains("uric"), onCheckedChange = { toggleModule("uric") })
+                }
+            }
+        }
+
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(L10n.get("who_bp", lang), style = MaterialTheme.typography.titleMedium, color = ColorBpRed, fontWeight = FontWeight.Bold)
@@ -584,16 +802,32 @@ fun KnowledgeRow(label: String, color: Color) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HistoryScreen(viewModel: HealthViewModel) {
     val records by viewModel.allRecords.collectAsState()
     val activeProfile by viewModel.currentUserProfile.collectAsState()
     val lang = activeProfile?.language ?: "zh"
     
+    // Module Visibility Logic
+    val modules = remember(activeProfile?.enabledModules) {
+        activeProfile?.enabledModules?.split(",")?.map { it.trim() } ?: listOf("bp", "weight", "hr")
+    }
+    val showBp = modules.contains("bp")
+    val showWeight = modules.contains("weight")
+    val showHr = modules.contains("hr")
+    val showGlucose = modules.contains("glucose")
+    val showUric = modules.contains("uric")
+    
     // UI State
     var showExportDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
+    var showDeleteAlert by remember { mutableStateOf(false) }
     
+    // Selection state
+    var isSelectionMode by remember { mutableStateOf(false) }
+    var selectedRecords by remember { mutableStateOf(setOf<HealthRecord>()) }
+
     // I/O Logic
     val context = LocalContext.current
     
@@ -619,6 +853,25 @@ fun HistoryScreen(viewModel: HealthViewModel) {
     }
 
     // Dialogs
+    if (showDeleteAlert) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAlert = false },
+            title = { Text(L10n.get("confirm_delete", lang)) },
+            text = { Text(L10n.get("delete_msg", lang)) },
+            confirmButton = {
+                TextButton(onClick = { 
+                    viewModel.deleteRecords(selectedRecords.toList())
+                    selectedRecords = emptySet()
+                    isSelectionMode = false 
+                    showDeleteAlert = false
+                }) { Text(L10n.get("delete", lang), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAlert = false }) { Text(L10n.get("cancel", lang)) }
+            }
+        )
+    }
+
     if (showExportDialog) {
         AlertDialog(
             onDismissRequest = { showExportDialog = false },
@@ -654,7 +907,7 @@ fun HistoryScreen(viewModel: HealthViewModel) {
         AlertDialog(
             onDismissRequest = { showImportDialog = false },
             title = { Text(if(lang=="zh") "导入数据" else "Import Data") },
-            text = { Text(if(lang=="zh") "将从CSV文件合并数据。请确保格式正确(Date,SBP,DBP,HR,Weight)。" else "Merge data from CSV. Ensure format: Date,SBP,DBP,HR,Weight.") },
+            text = { Text(if(lang=="zh") "将从CSV文件合并数据。请确保格式正确(Date,SBP,DBP,HR,Weight,Glucose,UricAcid)。" else "Merge data from CSV. Ensure format: Date,SBP,DBP,HR,Weight,Glucose,UricAcid.") },
             confirmButton = {
                 TextButton(onClick = { 
                     showImportDialog = false
@@ -669,20 +922,32 @@ fun HistoryScreen(viewModel: HealthViewModel) {
 
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         // Sticky Header / Tools
-        item {
-            Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(L10n.get("nav_history", lang), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Export Button -> Dialog
-                    IconButton(onClick = { showExportDialog = true }) { Icon(Icons.Default.Share, null, tint = MaterialTheme.colorScheme.primary) }
-
-                    // Import Button -> Dialog
-                    IconButton(onClick = { showImportDialog = true }) { Icon(Icons.Default.AddCircle, null, tint = MaterialTheme.colorScheme.primary) }
-
-                    Spacer(Modifier.width(8.dp))
-                    TextButton(onClick = { activeProfile?.let { viewModel.saveProfile(it.copy(language = if(lang == "zh") "en" else "zh")) } }, contentPadding = PaddingValues(0.dp)) {
-                         Text(if(lang == "zh") "En" else "中", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        stickyHeader {
+            Surface(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), color = MaterialTheme.colorScheme.background) {
+                Row(horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    if (isSelectionMode) {
+                        Text("${selectedRecords.size} selected", style = MaterialTheme.typography.titleMedium)
+                        Row {
+                            IconButton(onClick = { 
+                                if(selectedRecords.size == records.size) selectedRecords = emptySet() 
+                                else selectedRecords = records.toSet() 
+                            }) { Icon(Icons.Default.CheckCircle, null) }
+                            
+                            IconButton(onClick = { if(selectedRecords.isNotEmpty()) showDeleteAlert = true }) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
+                            
+                            IconButton(onClick = { isSelectionMode = false; selectedRecords = emptySet() }) { Icon(Icons.Default.Close, null) }
+                        }
+                    } else {
+                        Text(L10n.get("nav_history", lang), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { isSelectionMode = true }) { Icon(Icons.Default.Edit, null) } // Enable Selection
+                            IconButton(onClick = { showExportDialog = true }) { Icon(Icons.Default.Share, null, tint = MaterialTheme.colorScheme.primary) }
+                            IconButton(onClick = { showImportDialog = true }) { Icon(Icons.Default.AddCircle, null, tint = MaterialTheme.colorScheme.primary) }
+                            Spacer(Modifier.width(8.dp))
+                            TextButton(onClick = { activeProfile?.let { viewModel.saveProfile(it.copy(language = if(lang == "zh") "en" else "zh")) } }, contentPadding = PaddingValues(0.dp)) {
+                                 Text(if(lang == "zh") "En" else "中", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }
@@ -694,25 +959,43 @@ fun HistoryScreen(viewModel: HealthViewModel) {
             val bpH = if(lang=="zh") "血压" else "BP"
             val hrH = if(lang=="zh") "心率" else "HR"
             val wtH = if(lang=="zh") "体重" else "Weight"
+            val gluH = if(lang=="zh") "血糖" else "Glu"
+            val uricH = if(lang=="zh") "尿酸" else "Uric"
             
             Row(modifier = Modifier.padding(bottom = 8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                if(isSelectionMode) Spacer(Modifier.width(32.dp))
                 Text(dateH, fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.weight(1.2f)) // More space for date
                 Row(modifier = Modifier.weight(2f), horizontalArrangement = Arrangement.SpaceBetween) {
-                     Text(bpH, fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                     Text(hrH, fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
-                     Text(wtH, fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
+                     if (showBp) Text(bpH, fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                     if (showHr) Text(hrH, fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
+                     if (showWeight) Text(wtH, fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
+                     if (showGlucose) Text(gluH, fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
+                     if (showUric) Text(uricH, fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
                 }
             }
             Divider()
         }
         items(records) { r ->
-            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-                Row(modifier = Modifier.padding(14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(r.date.take(10), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), fontSize = 13.sp)
-                    Row(modifier = Modifier.weight(2f), horizontalArrangement = Arrangement.SpaceBetween) {
-                         Text("${r.sbp}/${r.dbp}", color = ColorBpRed, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                         Text("${r.hr}", color = ColorHrOrange, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
-                         Text("${r.weight}", color = ColorWeightPurple, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable {
+                if(isSelectionMode) {
+                    if(selectedRecords.contains(r)) selectedRecords -= r else selectedRecords += r
+                }
+            }) {
+                if(isSelectionMode) {
+                    Checkbox(checked = selectedRecords.contains(r), onCheckedChange = { chk -> 
+                         if(chk) selectedRecords += r else selectedRecords -= r
+                    })
+                }
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+                    Row(modifier = Modifier.padding(14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(r.date.take(10), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), fontSize = 13.sp)
+                        Row(modifier = Modifier.weight(2f), horizontalArrangement = Arrangement.SpaceBetween) {
+                             if (showBp) Text("${r.sbp ?: "-"}/${r.dbp ?: "-"}", color = ColorBpRed, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                             if (showHr) Text("${r.hr ?: "-"}", color = ColorHrOrange, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
+                             if (showWeight) Text("${r.weight ?: "-"}", color = ColorWeightPurple, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
+                             if (showGlucose) Text("${r.bloodGlucose ?: "-"}", color = ColorGlucose, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
+                             if (showUric) Text("${r.uricAcid ?: "-"}", color = ColorUric, fontWeight = FontWeight.Bold, modifier = Modifier.weight(0.7f), textAlign = TextAlign.Center)
+                        }
                     }
                 }
             }
@@ -732,7 +1015,7 @@ fun SoftSegmentGauge(value: Float, min: Float, max: Float, segments: List<Pair<F
     var currentStart = 0f
     
     // Build gradient stops
-    segments.forEachIndexed { index, (limit, color) ->
+    segments.forEach { (limit, color) ->
         val safeLimit = limit.coerceAtMost(max)
         val endFraction = ((safeLimit - min) / totalRange).coerceIn(0f, 1f)
         

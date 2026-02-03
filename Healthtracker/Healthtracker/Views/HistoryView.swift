@@ -12,16 +12,19 @@ struct HistoryView: View {
     let lang: String
     let onLangToggle: () -> Void
     let onImport: ([(date: Date, sbp: Int?, dbp: Int?, hr: Int?, weight: Double?)]) -> Void
+    let onDelete: (Set<UUID>) -> Void
     
     @State private var showingExportDialog = false
     @State private var showingImportDialog = false
     @State private var showingFilePicker = false
     @State private var showingShareSheet = false
+    @State private var showingDeleteAlert = false
     @State private var csvContent = ""
+    @State private var selection = Set<UUID>()
     
     var body: some View {
         NavigationStack {
-            List {
+            List(selection: $selection) {
                 // Header Row
                 Section {
                     headerRow
@@ -30,12 +33,25 @@ struct HistoryView: View {
                 // Data Rows
                 ForEach(records, id: \.id) { record in
                     recordRow(record)
+                        .tag(record.id)
                 }
             }
             .navigationTitle(L10n.get("nav_history", lang))
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     HStack(spacing: 8) {
+                        if !selection.isEmpty {
+                            Button(role: .destructive) {
+                                showingDeleteAlert = true
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                        }
+                        
+                        #if os(iOS)
+                        EditButton()
+                        #endif
+                        
                         // Export Button
                         Button(action: { showingExportDialog = true }) {
                             Image(systemName: "square.and.arrow.up")
@@ -54,6 +70,15 @@ struct HistoryView: View {
                         }
                     }
                 }
+            }
+            .alert(L10n.get("confirm_delete", lang), isPresented: $showingDeleteAlert) {
+                Button(L10n.get("delete", lang), role: .destructive) {
+                    onDelete(selection)
+                    selection.removeAll()
+                }
+                Button(L10n.get("cancel", lang), role: .cancel) {}
+            } message: {
+                Text(L10n.get("delete_message", lang))
             }
             // Export Dialog
             .confirmationDialog(
@@ -261,6 +286,7 @@ struct MacShareSheet: View {
         profile: UserProfile(id: 1, name: "Test"),
         lang: "zh",
         onLangToggle: {},
-        onImport: { _ in }
+        onImport: { _ in },
+        onDelete: { _ in }
     )
 }

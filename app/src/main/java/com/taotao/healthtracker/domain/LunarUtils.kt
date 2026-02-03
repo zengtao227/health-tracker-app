@@ -1,3 +1,5 @@
+@file:Suppress("SpellCheckingInspection", "unused")
+
 package com.taotao.healthtracker.domain
 
 import com.nlf.calendar.Lunar

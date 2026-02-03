@@ -11,7 +11,8 @@ data class UserProfile(
     val birthDay: Int = 1,
     val height: Float = 175f,
     val language: String = "zh",
-    val insightLanguage: String = "zh" // Independent lang for the bottom card
+    val insightLanguage: String = "zh", // Independent lang for the bottom card
+    val enabledModules: String = "bp,weight,hr" // Comma-separated: bp,weight,hr,glucose,uric
 )
 
 @Entity(tableName = "almanac_data")
@@ -30,5 +31,7 @@ data class HealthRecord(
     val sbp: Int?,
     val dbp: Int?,
     val hr: Int?,
-    val weight: Float?
+    val weight: Float?,
+    val bloodGlucose: Float? = null, // mg/dL or mmol/L
+    val uricAcid: Float? = null // umol/L or mg/dL
 )

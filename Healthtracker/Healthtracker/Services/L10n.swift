@@ -50,6 +50,9 @@ struct L10n {
             "cancel": ["zh": "取消", "en": "Cancel"],
             "select_file": ["zh": "选择文件", "en": "Select File"],
             "import_hint": ["zh": "将从CSV文件合并数据。请确保格式正确(Date,SBP,DBP,HR,Weight)。", "en": "Merge data from CSV. Ensure format: Date,SBP,DBP,HR,Weight."],
+            "confirm_delete": ["zh": "确认删除", "en": "Confirm Delete"],
+            "delete": ["zh": "删除", "en": "Delete"],
+            "delete_message": ["zh": "您确定要删除选中的记录吗？此操作无法撤销。", "en": "Are you sure you want to delete the selected records? This action cannot be undone."],
             
             // Knowledge
             "bp_reference": ["zh": "血压参考标准", "en": "Blood Pressure Reference"],

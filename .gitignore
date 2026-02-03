@@ -25,8 +25,20 @@ Healthtracker/Healthtracker.xcodeproj/xcuserdata/
 # OS
 .DS_Store
 Thumbs.db
+*.plist
 
-# Release
-# Release
+# Logs and temp files
+*.log
+build_error.log
+fix_icons.py
+
+# VS Code Workspace
+*.code-workspace
+
+# Release and Build artifacts
+Healthtracker/build_mac/
+release/
+
+# Releases
 !releases/*.apk
 !releases/*.zip

@@ -15,7 +15,7 @@ enum class Screen(val route: String) {
     Add("Add"),
     History("History"),
     Stats("Stats"),
-    Knowledge("Knowledge")
+    Settings("Settings")
 }
 
 @Composable
@@ -50,8 +50,8 @@ fun HealthTrackerNavHost(viewModel: HealthViewModel) {
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Menu, null) },
                     label = { Text(L10n.get("nav_ref", lang)) },
-                    selected = currentRoute == Screen.Knowledge.route,
-                    onClick = { navigate(navController, Screen.Knowledge.route) }
+                    selected = currentRoute == Screen.Settings.route,
+                    onClick = { navigate(navController, Screen.Settings.route) }
                 )
             }
         }
@@ -72,7 +72,7 @@ fun HealthTrackerNavHost(viewModel: HealthViewModel) {
             }
             composable(Screen.History.route) { HistoryScreen(viewModel) }
             composable(Screen.Stats.route) { StatsScreen(viewModel) }
-            composable(Screen.Knowledge.route) { KnowledgeScreen(viewModel) } // Passed ViewModel
+            composable(Screen.Settings.route) { SettingsScreen(viewModel) }
         }
     }
 }

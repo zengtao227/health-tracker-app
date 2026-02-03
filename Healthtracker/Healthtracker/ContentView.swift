@@ -57,7 +57,8 @@ struct ContentView: View {
                 profile: currentProfile,
                 lang: lang,
                 onLangToggle: toggleLanguage,
-                onImport: importRecords
+                onImport: importRecords,
+                onDelete: deleteRecords
             )
             .tabItem {
                 Image(systemName: "clock.fill")
@@ -152,6 +153,20 @@ struct ContentView: View {
                 weight: item.weight
             )
             modelContext.insert(record)
+        }
+        try? modelContext.save()
+    }
+    
+    private func deleteRecords(ids: Set<UUID>) {
+        // Iterate and delete
+        // Note: Delete by ID predicate is tricky with Sets in SwiftData in one go, 
+        // so we can iterate over the in-memory records that we already fetched.
+        // We have `records` available which is [HealthRecord].
+        
+        for record in records {
+            if ids.contains(record.id) {
+                modelContext.delete(record)
+            }
         }
         try? modelContext.save()
     }

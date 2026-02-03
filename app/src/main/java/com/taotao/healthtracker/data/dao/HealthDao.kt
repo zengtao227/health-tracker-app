@@ -36,4 +36,7 @@ interface HealthDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAlmanac(almanac: AlmanacData)
+
+    @Delete
+    suspend fun deleteRecord(record: HealthRecord)
 }

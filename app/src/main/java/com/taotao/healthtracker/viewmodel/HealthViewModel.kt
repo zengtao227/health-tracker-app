@@ -82,32 +82,97 @@ class HealthViewModel(private val repository: HealthRepository) : ViewModel() {
 
     // Export Logic: Return CSV String
     fun getExportCsv(): String {
-        val header = "Date,SBP,DBP,HR,Weight\n"
+        val header = "Date,SBP,DBP,HR,Weight,Glucose,UricAcid\n"
         val rows = allRecords.value.joinToString("\n") { r ->
-            "${r.date},${r.sbp ?: ""},${r.dbp ?: ""},${r.hr ?: ""},${r.weight ?: ""}"
+            "${r.date},${r.sbp ?: ""},${r.dbp ?: ""},${r.hr ?: ""},${r.weight ?: ""},${r.bloodGlucose ?: ""},${r.uricAcid ?: ""}"
         }
         return header + rows
     }
 
-    // Import Logic: Parse CSV String
+    // Import Logic: Parse CSV String with Auto-Detection
     fun importCsv(content: String) {
         viewModelScope.launch {
             try {
-                content.lineSequence().drop(1).forEach { line -> // Skip header
+                // Determine format
+                val firstLine = content.lineSequence().firstOrNull()?.lowercase() ?: return@launch
+                val isFitbit = firstLine.contains("weight grams")
+                val isBP = firstLine.contains("sys") && firstLine.contains("dia") && firstLine.contains("pul")
+                
+                content.lineSequence().forEachIndexed { index, line ->
+                    if (index == 0) return@forEachIndexed // Skip header
+                    
                     if (line.isNotBlank()) {
                         val parts = line.split(",")
                         if (parts.isNotEmpty()) {
-                            // Basic parsing, assuming standard order: Date,SBP,DBP,HR,Weight
-                            val date = parts.getOrNull(0)?.trim() ?: ""
-                            val sbp = parts.getOrNull(1)?.trim()?.toIntOrNull()
-                            val dbp = parts.getOrNull(2)?.trim()?.toIntOrNull()
-                            val hr = parts.getOrNull(3)?.trim()?.toIntOrNull()
-                            val wt = parts.getOrNull(4)?.trim()?.toFloatOrNull()
+                            val lowerLine = line.lowercase()
+                            // Skip re-headers
+                            if (lowerLine.contains("date") && lowerLine.contains("sbp")) return@forEachIndexed
+                            if (isFitbit && lowerLine.contains("weight grams")) return@forEachIndexed
+                            
+                            var date = ""
+                            var sbp: Int? = null
+                            var dbp: Int? = null
+                            var hr: Int? = null
+                            var wt: Float? = null
+                            var glu: Float? = null
+                            var uric: Float? = null
+                            
+                            if (isBP) {
+                                // BP Format: DATE,TIME,SYS,DIA,PUL
+                                // 01/23/2026,09:12,128,93,59
+                                if (parts.size >= 5) {
+                                    val d = parts[0].trim()
+                                    val t = parts[1].trim()
+                                    
+                                    // Combine Date Time -> ISO or YYYY-MM-DD
+                                    // Input: MM/dd/yyyy
+                                    try {
+                                        val inputFormat = java.text.SimpleDateFormat("MM/dd/yyyy HH:mm", java.util.Locale.US)
+                                        val outputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                                        val parsed = inputFormat.parse("$d $t")
+                                        if (parsed != null) {
+                                            date = outputFormat.format(parsed)
+                                        }
+                                    } catch(e: Exception) {
+                                        // Fallback or ignore
+                                    }
+                                    
+                                    sbp = parts[2].trim().toIntOrNull()
+                                    dbp = parts[3].trim().toIntOrNull()
+                                    hr = parts[4].trim().toIntOrNull()
+                                }
+                            } else if (isFitbit) {
+                                // Fitbit: timestamp,weight grams,data source
+                                // 2022-10-20T21:59:59Z,74000,...
+                                if (parts.size >= 2) {
+                                    val rawDate = parts[0].trim() // ISO
+                                    if (rawDate.length >= 10) {
+                                        date = rawDate.substring(0, 10)
+                                    }
+                                    
+                                    val grams = parts[1].trim().toDoubleOrNull()
+                                    if (grams != null) {
+                                        wt = (grams / 1000.0).toFloat()
+                                    }
+                                }
+                            } else {
+                                // Standard: Date,SBP,DBP,HR,Weight,Glucose,UricAcid
+                                date = parts.getOrNull(0)?.trim() ?: ""
+                                if (date.length > 10) date = date.substring(0, 10)
+                                
+                                sbp = parts.getOrNull(1)?.trim()?.toIntOrNull()
+                                dbp = parts.getOrNull(2)?.trim()?.toIntOrNull()
+                                hr = parts.getOrNull(3)?.trim()?.toIntOrNull()
+                                wt = parts.getOrNull(4)?.trim()?.toFloatOrNull()
+                                glu = parts.getOrNull(5)?.trim()?.toFloatOrNull()
+                                uric = parts.getOrNull(6)?.trim()?.toFloatOrNull()
+                            }
                             
                             if (date.isNotEmpty()) {
                                 repository.saveRecord(HealthRecord(
                                     userId = _currentUserId.value,
-                                    date = date, sbp = sbp, dbp = dbp, hr = hr, weight = wt
+                                    date = date, sbp = sbp, dbp = dbp, hr = hr, weight = wt,
+                                    bloodGlucose = glu, uricAcid = uric
                                 ))
                             }
                         }
@@ -118,9 +183,16 @@ class HealthViewModel(private val repository: HealthRepository) : ViewModel() {
             }
         }
     }
+    
+    fun deleteRecords(records: List<HealthRecord>) {
+        viewModelScope.launch {
+            records.forEach { repository.deleteRecord(it) }
+        }
+    }
 }
 
 class HealthViewModelFactory(private val repository: HealthRepository) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HealthViewModel::class.java)) return HealthViewModel(repository) as T
         throw IllegalArgumentException("Unknown ViewModel class")
