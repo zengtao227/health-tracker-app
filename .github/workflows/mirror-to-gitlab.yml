@@ -34,16 +34,26 @@ jobs:
 
       - name: Configure GitLab remote
         env:
-          GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
-          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
           GITLAB_REPO: ${{ secrets.GITLAB_REPO }}
         run: |
           set -eu
-          git remote add gitlab "https://${GITLAB_USERNAME}:${GITLAB_TOKEN}@gitlab.com/${GITLAB_REPO}.git"
+          git remote add gitlab "https://gitlab.com/${GITLAB_REPO}.git"
 
       - name: Mirror main branch
         if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-        run: git push gitlab refs/heads/main:refs/heads/main
+        env:
+          GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        run: |
+          set -eu
+          auth_header="$(printf '%s:%s' "$GITLAB_USERNAME" "$GITLAB_TOKEN" | base64 | tr -d '\n')"
+          git -c http.extraHeader="Authorization: Basic $auth_header" push gitlab refs/heads/main:refs/heads/main
 
       - name: Mirror tags
-        run: git push gitlab 'refs/tags/*:refs/tags/*'
+        env:
+          GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        run: |
+          set -eu
+          auth_header="$(printf '%s:%s' "$GITLAB_USERNAME" "$GITLAB_TOKEN" | base64 | tr -d '\n')"
+          git -c http.extraHeader="Authorization: Basic $auth_header" push gitlab 'refs/tags/*:refs/tags/*'
