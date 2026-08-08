@@ -1,0 +1,9 @@
+Personal Health Records helps you keep your own health measurements organized on your Android device.
+
+Record blood pressure, heart rate, weight, blood glucose, and uric acid. Review trends over time, and import or export data using CSV or Excel-compatible files. The app is available in Chinese and English.
+
+The app stores health records locally and does not upload them. No account is required, and the app does not request Internet access. Health data is excluded from Android cloud backup, while Android's direct device-to-device transfer may migrate it to a new device. Please protect your device and take care when sharing exported files.
+
+The app also provides traditional calendar and zodiac references for personal interest. They are not health guidance.
+
+Personal Health Records is for personal record keeping only. It is not a medical device and does not provide medical diagnosis, treatment, or clinical advice. Always seek advice from a qualified healthcare professional for medical questions or decisions.

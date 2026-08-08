@@ -6,6 +6,8 @@ local.properties
 *.apk
 *.aar
 *.jks
+*.keystore
+*.p12
 
 # IDE - IntelliJ / Android Studio
 .idea/

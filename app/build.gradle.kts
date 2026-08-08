@@ -12,22 +12,12 @@ android {
         applicationId = "com.taotao.healthtracker"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.3"
+        versionCode = 3
+        versionName = "1.1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
-        }
-    }
-
-    signingConfigs {
-        create("release") {
-            // 使用调试签名进行发布（仅用于测试）
-            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
         }
     }
 
@@ -38,7 +28,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {

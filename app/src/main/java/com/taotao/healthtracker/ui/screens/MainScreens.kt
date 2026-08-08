@@ -27,8 +27,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.OpenableColumns
+import android.widget.Toast
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.*
@@ -38,8 +41,42 @@ import com.taotao.healthtracker.data.entity.UserProfile
 import com.taotao.healthtracker.domain.DateUtils
 import com.taotao.healthtracker.viewmodel.HealthViewModel
 import com.taotao.healthtracker.ui.L10n
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.*
+
+private const val MAX_CSV_IMPORT_BYTES: Long = 5L * 1024L * 1024L
+
+private fun queryDocumentSize(context: Context, uri: Uri): Long? {
+    val projection: Array<String> = arrayOf(OpenableColumns.SIZE)
+    return context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+        val sizeColumnIndex: Int = cursor.getColumnIndex(OpenableColumns.SIZE)
+        if (sizeColumnIndex < 0 || !cursor.moveToFirst() || cursor.isNull(sizeColumnIndex)) {
+            return@use null
+        }
+        cursor.getLong(sizeColumnIndex)
+    }
+}
+
+internal fun readUtf8WithLimit(inputStream: InputStream, maxBytes: Long): String? {
+    val output: ByteArrayOutputStream = ByteArrayOutputStream()
+    val buffer: ByteArray = ByteArray(DEFAULT_BUFFER_SIZE)
+    var totalBytes: Long = 0L
+
+    while (true) {
+        val bytesRead: Int = inputStream.read(buffer)
+        if (bytesRead == -1) {
+            return output.toString(Charsets.UTF_8.name())
+        }
+
+        totalBytes += bytesRead.toLong()
+        if (totalBytes > maxBytes) {
+            return null
+        }
+        output.write(buffer, 0, bytesRead)
+    }
+}
 
 val ColorBpRed = Color(0xFFFF4848)
 val ColorBpBlue = Color(0xFF2196F3)
@@ -966,10 +1003,29 @@ fun HistoryScreen(viewModel: HealthViewModel) {
     // 1. Import Launcher
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
+            val importRejectedMessage: String = if (lang == "zh") {
+                "CSV 文件无法安全读取、大小未知或超过 5 MB，已拒绝导入。"
+            } else {
+                "The CSV could not be read safely, its size is unknown, or it exceeds 5 MB, so it was not imported."
+            }
             try {
-                val input = context.contentResolver.openInputStream(it)?.bufferedReader().use { r -> r?.readText() }
-                if (input != null) viewModel.importCsv(input)
-            } catch(e: Exception) { e.printStackTrace() }
+                val documentSize: Long? = queryDocumentSize(context, it)
+                if (documentSize == null || documentSize < 0L || documentSize > MAX_CSV_IMPORT_BYTES) {
+                    Toast.makeText(context, importRejectedMessage, Toast.LENGTH_LONG).show()
+                    return@let
+                }
+
+                val input: String? = context.contentResolver.openInputStream(it)?.use { stream ->
+                    readUtf8WithLimit(stream, MAX_CSV_IMPORT_BYTES)
+                }
+                if (input == null) {
+                    Toast.makeText(context, importRejectedMessage, Toast.LENGTH_LONG).show()
+                    return@let
+                }
+                viewModel.importCsv(input)
+            } catch (_: Exception) {
+                Toast.makeText(context, importRejectedMessage, Toast.LENGTH_LONG).show()
+            }
         }
     }
     

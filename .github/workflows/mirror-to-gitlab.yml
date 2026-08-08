@@ -1,0 +1,49 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out complete history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+
+      - name: Validate mirror secrets
+        env:
+          GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          GITLAB_REPO: ${{ secrets.GITLAB_REPO }}
+        run: |
+          set -eu
+          test -n "$GITLAB_USERNAME"
+          test -n "$GITLAB_TOKEN"
+          test -n "$GITLAB_REPO"
+          echo "::add-mask::$GITLAB_TOKEN"
+
+      - name: Configure GitLab remote
+        env:
+          GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          GITLAB_REPO: ${{ secrets.GITLAB_REPO }}
+        run: |
+          set -eu
+          git remote add gitlab "https://${GITLAB_USERNAME}:${GITLAB_TOKEN}@gitlab.com/${GITLAB_REPO}.git"
+
+      - name: Mirror main branch
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: git push gitlab refs/heads/main:refs/heads/main
+
+      - name: Mirror tags
+        run: git push gitlab 'refs/tags/*:refs/tags/*'

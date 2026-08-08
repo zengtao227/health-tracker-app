@@ -1,0 +1,3 @@
+- Renamed the app to Personal Health Records.
+- Excluded health data from Android cloud backups.
+- Improved CSV import safety and release compatibility.
