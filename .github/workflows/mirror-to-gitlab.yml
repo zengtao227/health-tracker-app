@@ -50,10 +50,13 @@ jobs:
           git -c http.extraHeader="Authorization: Basic $auth_header" push gitlab refs/heads/main:refs/heads/main
 
       - name: Mirror tags
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
         run: |
           set -eu
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+\+[0-9]+$ ]]
+          git fetch --no-tags origin "refs/tags/${GITHUB_REF_NAME}:refs/fdroid-mirror-tag"
           auth_header="$(printf '%s:%s' "$GITLAB_USERNAME" "$GITLAB_TOKEN" | base64 | tr -d '\n')"
-          git -c http.extraHeader="Authorization: Basic $auth_header" push gitlab 'refs/tags/*:refs/tags/*'
+          git -c http.extraHeader="Authorization: Basic $auth_header" push gitlab "refs/fdroid-mirror-tag:refs/tags/${GITHUB_REF_NAME}"
