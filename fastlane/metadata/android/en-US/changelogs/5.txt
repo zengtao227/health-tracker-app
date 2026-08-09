@@ -1,0 +1,1 @@
+- Renamed the "Zodiac Insight" fallback card title in Chinese from "运势黄历" to "星座洞察" so it no longer shares wording with the almanac mode toggle button and content title.

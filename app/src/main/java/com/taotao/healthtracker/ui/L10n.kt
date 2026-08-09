@@ -102,7 +102,7 @@ object L10n {
         "import_success" to "导入成功",
         "select_file" to "选择文件",
         "lang_name" to "中文",
-        "zodiac_insight" to "运势黄历",
+        "zodiac_insight" to "星座洞察",
         "period_1y" to "1年",
         "period_max" to "全部"
     )
