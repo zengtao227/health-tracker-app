@@ -2,7 +2,7 @@
 
 - Application ID: `com.taotao.healthtracker`
 - Store name: Personal Health Records
-- Release target: versionName `1.1.4`, versionCode `3`
+- Release target: versionName `1.1.5`, versionCode `4`
 - License: GPL-3.0-or-later, Copyright © 2026 Zeng Tao
 - Primary repository: https://github.com/zengtao227/health-tracker-app
 - Public mirror: https://gitlab.com/zengtao227/health-tracker-app

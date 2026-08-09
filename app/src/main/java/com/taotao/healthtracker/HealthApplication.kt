@@ -12,14 +12,13 @@ class HealthApplication : Application() {
     }
 
     private fun setupBackgroundSync() {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED) // Only sync when online
-            .build()
-
+        // AlmanacWorker only computes lunar calendar data locally (lunar-java) and
+        // writes to the local Room database — it never touches the network, so it
+        // must not require one. The former NetworkType.CONNECTED constraint just
+        // pulled in the ACCESS_NETWORK_STATE permission for no reason.
         val syncRequest = PeriodicWorkRequestBuilder<AlmanacWorker>(
             1, TimeUnit.DAYS // Check once a day
         )
-        .setConstraints(constraints)
         .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(

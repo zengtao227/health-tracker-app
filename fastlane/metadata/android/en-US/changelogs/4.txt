@@ -1,0 +1,2 @@
+- Removed an unused network-state permission (the daily almanac refresh is fully local and never needed it).
+- Localized the "Zodiac Insight" fallback card title and the trends period selector (1Y/MAX) to match the app's display language.

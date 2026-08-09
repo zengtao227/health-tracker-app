@@ -441,7 +441,7 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                         )
                     }
                 } else {
-                    Text("Zodiac Insight", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                    Text(L10n.get("zodiac_insight", appLang), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                     Spacer(Modifier.height(8.dp))
                     Text(almanac.lunar, style = MaterialTheme.typography.bodyMedium, color = Color.Gray, textAlign = TextAlign.Center)
                 }
@@ -502,7 +502,12 @@ fun StatsScreen(viewModel: HealthViewModel) {
                         color = if(selected) MaterialTheme.colorScheme.primary else Color.Transparent,
                         border = if(!selected) BorderStroke(1.dp, Color.Gray.copy(0.3f)) else null
                     ) {
-                        Text(if(r=="365") "1Y" else r, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), 
+                        val rangeLabel = when (r) {
+                            "365" -> L10n.get("period_1y", lang)
+                            "MAX" -> L10n.get("period_max", lang)
+                            else -> r
+                        }
+                        Text(rangeLabel, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                              color = if(selected) Color.White else Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }

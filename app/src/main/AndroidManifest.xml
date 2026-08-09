@@ -4,6 +4,13 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- WorkManager's library manifest declares this permission unconditionally, but
+         AlmanacWorker never sets a network constraint (it only does local computation),
+         so the app has no actual use for it. Strip it from the merged manifest. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
