@@ -108,11 +108,14 @@ jobs:
           RELEASE_ASSET_NAME: ${{ steps.sign.outputs.asset_name }}
         run: |
           set -eu
+          version_code="$(sed -n 's/.*versionCode = \([0-9][0-9]*\)/\1/p' app/build.gradle.kts)"
+          changelog="fastlane/metadata/android/en-US/changelogs/${version_code}.txt"
+          test -f "$changelog"
           gh release create "$RELEASE_TAG" \
             "$RELEASE_APK#$RELEASE_ASSET_NAME" \
             --verify-tag \
             --title "Personal Health Records $RELEASE_TAG" \
-            --notes-file fastlane/metadata/android/en-US/changelogs/3.txt
+            --notes-file "$changelog"
 
       - name: Remove temporary signing material
         if: always()
