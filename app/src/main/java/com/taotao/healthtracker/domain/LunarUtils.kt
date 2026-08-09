@@ -109,7 +109,8 @@ object LunarUtils {
     }
 
     /**
-     * 获取西式星座
+     * 获取西式星座季节名（仅用于英文界面的日期副标题，如 "Leo Season"）
+     * 注意：这只是季节称呼，不做任何星座性格/运势推算。
      * @param month 月份 (1-12)
      * @param day 日期 (1-31)
      * @return 星座英文名
@@ -130,26 +131,5 @@ object LunarUtils {
             12 -> if (day < 22) "Sagittarius" else "Capricorn"
             else -> "Aries"
         }
-    }
-
-    /**
-     * 获取星座能量洞察
-     */
-    fun getHoroscopeInsight(zodiac: String): Pair<String, String> {
-        val energies = mapOf(
-            "Aries" to ("Boldness" to "Impatience"),
-            "Taurus" to ("Stability" to "Possessiveness"),
-            "Gemini" to ("Wit" to "Indecisiveness"),
-            "Cancer" to ("Intuition" to "Moody"),
-            "Leo" to ("Confidence" to "Arrogance"),
-            "Virgo" to ("Detail-oriented" to "Self-critical"),
-            "Libra" to ("Charming" to "Detached"),
-            "Scorpio" to ("Passionate" to "Secretive"),
-            "Sagittarius" to ("Adventurous" to "Reckless"),
-            "Capricorn" to ("Ambitious" to "Cold"),
-            "Aquarius" to ("Innovative" to "Unpredictable"),
-            "Pisces" to ("Compassionate" to "Oversensitive")
-        )
-        return energies[zodiac] ?: ("Neutral" to "Routine")
     }
 }

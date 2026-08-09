@@ -178,7 +178,7 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                             Text(if(appLang == "zh") "English" else "中文", fontSize = 10.sp, fontWeight = FontWeight.Black)
                         }
                         TextButton(onClick = { activeProfile?.let { viewModel.saveProfile(it.copy(insightLanguage = if(insLang == "zh") "en" else "zh")) } }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp), modifier = Modifier.height(24.dp)) {
-                            Text(if(insLang == "zh") "Zodiac" else "黄历", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
+                            Text(if(insLang == "zh") "Brief" else "黄历", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -441,7 +441,7 @@ fun AddScreen(viewModel: HealthViewModel, onSaveSuccess: () -> Unit) {
                         )
                     }
                 } else {
-                    Text(L10n.get("zodiac_insight", appLang), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                    Text(L10n.get("almanac_brief", appLang), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                     Spacer(Modifier.height(8.dp))
                     Text(almanac.lunar, style = MaterialTheme.typography.bodyMedium, color = Color.Gray, textAlign = TextAlign.Center)
                 }
@@ -961,9 +961,7 @@ fun SettingsScreen(viewModel: HealthViewModel) {
                 
                 Text(if(lang == "zh") "1. 中文黄历：基于《协纪辨方书》之建除十二神循环推算。" else "1. Almanac: Calculated based on the 'Jian-Chu 12 Day Officers' cycle from traditional astronomy.", fontSize = 13.sp, lineHeight = 18.sp)
                 Spacer(Modifier.height(8.dp))
-                Text(if(lang == "zh") "2. 星座运势：基于西方回归黄道 (Tropical Zodiac) 系统推算。" else "2. Horoscope: Based on the Western Tropical Zodiac system.", fontSize = 13.sp, lineHeight = 18.sp)
-                Spacer(Modifier.height(8.dp))
-                Text(if(lang == "zh") "3. 健康标准：WHO 2024 高血压与BMI指南。" else "3. Health Refs: WHO 2024 Guidelines for Hypertension & BMI.", fontSize = 13.sp, lineHeight = 18.sp)
+                Text(if(lang == "zh") "2. 健康标准：WHO 2024 高血压与BMI指南。" else "2. Health Refs: WHO 2024 Guidelines for Hypertension & BMI.", fontSize = 13.sp, lineHeight = 18.sp)
             }
         }
     }

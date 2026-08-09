@@ -49,7 +49,7 @@ object L10n {
         "import_success" to "Import Successful",
         "select_file" to "Select File",
         "lang_name" to "English",
-        "zodiac_insight" to "Zodiac Insight",
+        "almanac_brief" to "Almanac Brief",
         "period_1y" to "1Y",
         "period_max" to "MAX"
     )
@@ -102,7 +102,7 @@ object L10n {
         "import_success" to "导入成功",
         "select_file" to "选择文件",
         "lang_name" to "中文",
-        "zodiac_insight" to "星座洞察",
+        "almanac_brief" to "简明干支",
         "period_1y" to "1年",
         "period_max" to "全部"
     )
