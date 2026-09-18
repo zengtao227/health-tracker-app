@@ -6,12 +6,22 @@
 # `pip install fdroidserver` (which drifts from the apt-installed deps the
 # official CI uses — see fdroid-release skill lessons-learned.md #38).
 #
-# Fixes the 3 real friction points found 2026-09-18 testing health-tracker-app
-# (fdroid-release skill lessons-learned.md #40):
+# Fixes 4 real friction points found testing health-tracker-app (fdroid-release
+# skill lessons-learned.md #40):
 #   1. The image does not ship fdroidserver — must `apt-get install` it.
 #   2. ANDROID_HOME is only set by /etc/profile.d/bsenv.sh, which only a
 #      LOGIN shell sources — plain `docker exec` misses it.
 #   3. The image has no `sudo`, which `fdroid build --on-server` needs.
+#   4. (found 2026-09-18 on GitLab CI) `-v host:/fdroiddata` bind mounts do
+#      NOT work when this script runs inside a Docker-in-Docker CI job: the
+#      `docker` client talks to the DinD *service* container over TCP, and a
+#      bind-mount source path is resolved on the service's own filesystem,
+#      not the job container's — where FDROIDDATA_DIR actually lives. Docker
+#      silently mounts an empty directory instead of erroring, so every gate
+#      then fails with "No such file or directory" even though the container
+#      itself started fine. Fixed by copying files in with `docker cp`
+#      instead of a bind mount — `docker cp` streams through the Docker API
+#      and works across the DinD boundary, unlike `-v`.
 #
 # Usage:
 #   FDROIDDATA_DIR=/path/to/fdroiddata-clone ./fdroid-preflight-init.sh start
@@ -21,9 +31,11 @@
 #   ./fdroid-preflight-init.sh stop
 #
 # Env vars (all optional except FDROIDDATA_DIR for `start`):
-#   FDROIDDATA_DIR         host path to a fdroiddata clone, mounted at /fdroiddata
-#                          inside the container. Must be a full (non-shallow) clone
-#                          unless ALLOW_SHALLOW_FDROIDDATA=1 (see below).
+#   FDROIDDATA_DIR         host path to a fdroiddata clone, copied (via `docker cp`,
+#                          not a bind mount — see fix #4 above) to /fdroiddata inside
+#                          the container. Changes made inside the container do NOT
+#                          propagate back to this host path. Must be a full
+#                          (non-shallow) clone unless ALLOW_SHALLOW_FDROIDDATA=1.
 #   ALLOW_SHALLOW_FDROIDDATA  set to 1 to accept a shallow FDROIDDATA_DIR clone.
 #                          Safe for read-only preflight runs (no push happens);
 #                          keep unset/0 if this run will push to an fdroiddata fork
@@ -78,12 +90,16 @@ cmd_start() {
   log "Pulling $IMAGE ..."
   docker pull "$IMAGE"
 
-  log "Starting container '$CONTAINER_NAME' with fdroiddata mounted at /fdroiddata ..."
+  log "Starting container '$CONTAINER_NAME' ..."
   docker run -d \
     --name "$CONTAINER_NAME" \
-    -v "$FDROIDDATA_DIR:/fdroiddata" \
     "$IMAGE" \
     sleep infinity
+
+  log "Fix #4: copying '$FDROIDDATA_DIR' into the container with docker cp"
+  log "(not a bind mount — see header comment for why bind mounts break under Docker-in-Docker) ..."
+  docker exec "$CONTAINER_NAME" mkdir -p /fdroiddata
+  docker cp "$FDROIDDATA_DIR/." "$CONTAINER_NAME:/fdroiddata/"
 
   log "Fix #1: installing fdroidserver + sudo (image ships neither) ..."
   docker exec "$CONTAINER_NAME" bash -lc \
