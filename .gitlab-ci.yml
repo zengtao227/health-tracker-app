@@ -1,0 +1,41 @@
+fdroid-preflight:
+  # Manual trigger only: this is a "run before I cut a release" check, not a
+  # per-commit gate — a real `fdroid build` inside the official buildserver
+  # image is too slow/expensive to run on every push. Trigger it from the
+  # GitLab UI (Build > Pipelines > Run pipeline, or the play button on this
+  # job) before tagging a new release.
+  #
+  # See ~/.claude/skills/fdroid-release (fdroid-release skill) for the full
+  # methodology this is based on. Scripts vendored from that skill's
+  # scripts/fdroid-preflight-init.sh and scripts/fdroid-preflight-run.sh —
+  # keep them in sync if the skill version changes.
+  stage: test
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "/certs/client"
+    FDROID_APP_ID: "com.taotao.healthtracker"
+    # Preflight is read-only (no push to fdroiddata), so a shallow clone is
+    # fine here and much faster than a full clone of fdroiddata's history.
+    ALLOW_SHALLOW_FDROIDDATA: "1"
+  rules:
+    - when: manual
+  before_script:
+    - apk add --no-cache bash git
+    - git clone --depth 1 https://gitlab.com/fdroid/fdroiddata.git /fdroiddata-clone
+  script:
+    - >
+      ./fdroid/scripts/fdroid-preflight-run.sh
+      "$FDROID_APP_ID"
+      "fdroid/metadata/${FDROID_APP_ID}.yml"
+      /fdroiddata-clone
+      "$CI_PROJECT_DIR/fdroid-preflight-report"
+  artifacts:
+    when: always
+    paths:
+      - fdroid-preflight-report/
+    expire_in: 30 days
