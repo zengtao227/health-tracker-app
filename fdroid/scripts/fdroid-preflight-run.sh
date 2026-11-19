@@ -21,9 +21,9 @@
 #
 # Example:
 #   ./fdroid-preflight-run.sh com.taotao.healthtracker \
-#     "/Users/zengtao/Doc/My code/personal-health-records/metadata/com.taotao.healthtracker.yml" \
+#     "$REPO/metadata/com.taotao.healthtracker.yml" \
 #     /path/to/fdroiddata-clone \
-#     "/Users/zengtao/Doc/My code/personal-health-records/.agent/evals"
+#     "$REPO/.agent/evals"
 #
 # Requirements on <fdroiddata-clone-dir>: full (non-shallow) clone of
 # https://gitlab.com/fdroid/fdroiddata, upstream up to date.
